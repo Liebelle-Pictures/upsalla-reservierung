@@ -187,6 +187,21 @@ export async function reservierungErstellen(
     }
   }
 
+  // Bestätigungs-SMS an Kunde senden
+  try {
+    const { sendeSMS } = await import('@/lib/twilio/client')
+    const datumAnzeige = new Date(datum + 'T00:00:00').toLocaleDateString('de-DE', {
+      weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+    })
+    const zeitAnzeige = zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
+    await sendeSMS(
+      telefon,
+      `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige} Uhr) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Wir freuen uns auf Sie!`,
+    )
+  } catch (err) {
+    console.error('[Twilio] SMS-Fehler:', err)
+  }
+
   revalidatePath('/')
   redirect(`/reservierungen/${reservierung.id}`)
 }
