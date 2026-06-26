@@ -4,7 +4,8 @@ import { useActionState, useState } from 'react'
 import { reservierungErstellen, type ReservierungFormState } from '@/app/actions/reservierungen'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istWochenende } from '@/lib/utils/zeitslots'
-import type { Loge, ZeitslotInfo } from '@/types/loge'
+import type { Loge } from '@/types/loge'
+import type { ZeitslotInfo } from '@/lib/utils/zeitslots'
 
 interface Props {
   datum: string

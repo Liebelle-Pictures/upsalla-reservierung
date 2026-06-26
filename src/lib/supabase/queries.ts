@@ -50,13 +50,24 @@ export async function getKunde(id: string): Promise<Kunde | null> {
   return data as unknown as Kunde | null
 }
 
-export async function getReservierungenFuerKunde(kundeId: string) {
+export interface ReservierungKurzinfo {
+  id: string
+  datum: string
+  zeitslot: number
+  status: string
+  typ: string
+  kinder_anzahl: number
+  gesamtbetrag: number
+  logen: { name: string } | null
+}
+
+export async function getReservierungenFuerKunde(kundeId: string): Promise<ReservierungKurzinfo[]> {
   const { data } = await supabaseAdmin
     .from('reservierungen')
     .select('id, datum, zeitslot, status, typ, kinder_anzahl, gesamtbetrag, logen(name)')
     .eq('kunde_id', kundeId)
     .order('datum', { ascending: false })
-  return data ?? []
+  return (data ?? []) as unknown as ReservierungKurzinfo[]
 }
 
 export async function getReservierungenMitDetails(datum: string, standortId: string) {

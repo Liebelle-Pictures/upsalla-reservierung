@@ -36,7 +36,7 @@ export default async function ReservierungenListePage({ searchParams }: Props) {
 
       <StatusFilter aktiv={aktiverFilter} />
 
-      <ReservierungListe reservierungen={reservierungen as Parameters<typeof ReservierungListe>[0]['reservierungen']} />
+      <ReservierungListe reservierungen={reservierungen as unknown as Parameters<typeof ReservierungListe>[0]['reservierungen']} />
     </div>
   )
 }

@@ -50,7 +50,7 @@ export default async function TagesuebersichtPage({ searchParams }: Props) {
         </div>
 
         <TagesuebersichtTabelle
-          reservierungen={reservierungen as Parameters<typeof TagesuebersichtTabelle>[0]['reservierungen']}
+          reservierungen={reservierungen as unknown as Parameters<typeof TagesuebersichtTabelle>[0]['reservierungen']}
         />
       </div>
     </div>

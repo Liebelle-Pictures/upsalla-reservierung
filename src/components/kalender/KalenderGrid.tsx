@@ -1,4 +1,5 @@
-import type { Loge, ZeitslotInfo } from '@/types/loge'
+import type { Loge } from '@/types/loge'
+import type { ZeitslotInfo } from '@/lib/utils/zeitslots'
 import type { Reservierung } from '@/types/reservierung'
 import { ReservierungKarte } from './ReservierungKarte'
 import { FreierSlot } from './FreierSlot'
