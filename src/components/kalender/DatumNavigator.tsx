@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 
 interface Props {
   datum: string  // YYYY-MM-DD
@@ -22,14 +23,26 @@ function verschiebeTag(datum: string, tage: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+function heuteLokal(): string {
+  const d = new Date()
+  const jahr = d.getFullYear()
+  const monat = String(d.getMonth() + 1).padStart(2, '0')
+  const tag = String(d.getDate()).padStart(2, '0')
+  return `${jahr}-${monat}-${tag}`
+}
+
 export function DatumNavigator({ datum }: Props) {
   const router = useRouter()
+  const [heute, setHeute] = useState(datum)
+
+  useEffect(() => {
+    setHeute(heuteLokal())
+  }, [])
 
   const navigiere = (zielDatum: string) => {
     router.push(`/?datum=${zielDatum}`)
   }
 
-  const heute = new Date().toISOString().slice(0, 10)
   const istHeute = datum === heute
 
   return (
