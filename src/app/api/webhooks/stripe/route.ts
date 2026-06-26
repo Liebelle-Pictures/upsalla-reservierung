@@ -16,8 +16,10 @@ export async function POST(request: NextRequest) {
   let event
   try {
     event = konstruiereEvent(payload, signatur)
-  } catch {
-    return NextResponse.json({ fehler: 'Ungültige Signatur' }, { status: 400 })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[Stripe Webhook] Signaturprüfung fehlgeschlagen:', msg)
+    return NextResponse.json({ fehler: 'Ungültige Signatur', details: msg }, { status: 400 })
   }
 
   if (event.type === 'checkout.session.completed') {
