@@ -94,27 +94,57 @@ export async function reservierungErstellen(
     kundeId = neuerKunde.id
   }
 
-  // Reservierung einfügen
-  const { data: reservierung, error: resError } = await supabaseAdmin
+  const neuerStatus = typ === 'GRUPPE' || typ === 'INTERN' ? 'GRUPPENANGEBOT' : 'BESTAETIGT_AUSSTEHEND'
+  const reservierungsDaten = {
+    standort_id: WUPPERTAL_STANDORT_ID,
+    loge_id: logeId,
+    kunde_id: kundeId,
+    typ,
+    status: neuerStatus,
+    datum,
+    zeitslot,
+    kinder_anzahl: kinderAnzahl,
+    erwachsene_anzahl: erwachseneAnzahl,
+    paket_preis_pro_kind: paketPreisProKind,
+    gesamtbetrag,
+    anzahlung_betrag: anzahlungBetrag,
+    notizen,
+    stripe_payment_link: null,
+    stripe_payment_intent_id: null,
+    aktualisiert_am: new Date().toISOString(),
+  }
+
+  // Prüfen ob stornierte Reservierung für diesen Slot existiert → wiederverwenden
+  const { data: storniertVorhanden } = await supabaseAdmin
     .from('reservierungen')
-    .insert({
-      standort_id: WUPPERTAL_STANDORT_ID,
-      loge_id: logeId,
-      kunde_id: kundeId,
-      typ,
-      status: typ === 'GRUPPE' || typ === 'INTERN' ? 'GRUPPENANGEBOT' : 'BESTAETIGT_AUSSTEHEND',
-      datum,
-      zeitslot,
-      kinder_anzahl: kinderAnzahl,
-      erwachsene_anzahl: erwachseneAnzahl,
-      paket_preis_pro_kind: paketPreisProKind,
-      gesamtbetrag,
-      anzahlung_betrag: anzahlungBetrag,
-      notizen,
-      erstellt_von: user.id,
-    })
     .select('id')
-    .single()
+    .eq('loge_id', logeId)
+    .eq('datum', datum)
+    .eq('zeitslot', zeitslot)
+    .eq('status', 'STORNIERT')
+    .maybeSingle()
+
+  let reservierung: { id: string } | null = null
+  let resError = null
+
+  if (storniertVorhanden) {
+    const { data, error } = await supabaseAdmin
+      .from('reservierungen')
+      .update(reservierungsDaten)
+      .eq('id', storniertVorhanden.id)
+      .select('id')
+      .single()
+    reservierung = data
+    resError = error
+  } else {
+    const { data, error } = await supabaseAdmin
+      .from('reservierungen')
+      .insert({ ...reservierungsDaten, erstellt_von: user.id })
+      .select('id')
+      .single()
+    reservierung = data
+    resError = error
+  }
 
   if (resError || !reservierung) {
     if (resError?.code === '23505') {
