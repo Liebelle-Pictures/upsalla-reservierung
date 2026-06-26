@@ -2,6 +2,21 @@ import { supabaseAdmin } from './admin'
 import type { Loge } from '@/types/loge'
 import type { Reservierung } from '@/types/reservierung'
 
+export interface Kunde {
+  id: string
+  standort_id: string
+  vorname: string
+  nachname: string
+  telefon: string
+  email: string | null
+  kind_geburtstag: string | null
+  dsgvo_einwilligung: boolean
+  newsletter_opt_in: boolean
+  anzahl_besuche: number
+  gesamtumsatz: number
+  erstellt_am: string
+}
+
 export async function getLoge(id: string): Promise<Loge | null> {
   const { data } = await supabaseAdmin
     .from('logen')
@@ -26,13 +41,13 @@ export async function getAlleKunden(standortId: string, suche?: string) {
   return data ?? []
 }
 
-export async function getKunde(id: string) {
+export async function getKunde(id: string): Promise<Kunde | null> {
   const { data } = await supabaseAdmin
     .from('kunden')
     .select('*')
     .eq('id', id)
     .single()
-  return data
+  return data as unknown as Kunde | null
 }
 
 export async function getReservierungenFuerKunde(kundeId: string) {
