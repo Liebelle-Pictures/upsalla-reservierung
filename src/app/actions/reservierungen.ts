@@ -218,6 +218,26 @@ export async function reservierungAktualisieren(
   redirect(`/reservierungen/${id}`)
 }
 
+export async function verifizierteZahlung(reservierungId: string, sessionId: string): Promise<void> {
+  try {
+    const { stripe } = await import('@/lib/stripe/client')
+    const session = await stripe.checkout.sessions.retrieve(sessionId)
+    if (session.payment_status === 'paid' && session.metadata?.reservierung_id === reservierungId) {
+      await supabaseAdmin
+        .from('reservierungen')
+        .update({
+          status: 'BESTAETIGT_BEZAHLT',
+          stripe_payment_intent_id: session.payment_intent as string ?? null,
+        })
+        .eq('id', reservierungId)
+      revalidatePath(`/reservierungen/${reservierungId}`)
+      revalidatePath('/')
+    }
+  } catch (err) {
+    console.error('[Stripe] Zahlungsverifizierung fehlgeschlagen:', err)
+  }
+}
+
 export async function reservierungStornieren(id: string): Promise<void> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
