@@ -20,7 +20,10 @@ function formatAnzeige(datum: string): string {
 function verschiebeTag(datum: string, tage: number): string {
   const d = new Date(datum + 'T00:00:00')
   d.setDate(d.getDate() + tage)
-  return d.toISOString().slice(0, 10)
+  const jahr = d.getFullYear()
+  const monat = String(d.getMonth() + 1).padStart(2, '0')
+  const tag = String(d.getDate()).padStart(2, '0')
+  return `${jahr}-${monat}-${tag}`
 }
 
 function heuteLokal(): string {
