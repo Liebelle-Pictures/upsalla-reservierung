@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
   const auth = pruefeLenaAuth(request)
   if (auth) return auth
   const body = await request.json().catch(() => ({}))
-  const datum = body.datum ?? request.nextUrl.searchParams.get('datum') ?? ''
-  return handleVerfuegbarkeit(datum)
+  console.log('[check_availability] body:', JSON.stringify(body))
+  const datumRaw = body.datum ?? request.nextUrl.searchParams.get('datum') ?? ''
+  return handleVerfuegbarkeit(String(datumRaw))
 }
