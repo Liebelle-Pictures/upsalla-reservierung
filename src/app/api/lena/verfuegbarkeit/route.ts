@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 async function handleVerfuegbarkeit(datum: string) {
   if (!datum || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) {
-    return NextResponse.json({ hinweis: 'Bitte das Datum vom Kunden erfragen (Format: YYYY-MM-DD, Beispiel: 2026-07-15).' })
+    return NextResponse.json({ hinweis: 'Datum fehlt. Bitte zuerst das Datum vom Kunden erfragen, dann erneut aufrufen.' })
   }
 
   const { data: logen } = await supabaseAdmin
