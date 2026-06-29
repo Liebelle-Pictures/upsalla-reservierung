@@ -7,7 +7,9 @@ import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 export const dynamic = 'force-dynamic'
 
 async function handleVerfuegbarkeit(datum: string) {
+  console.log('[check_availability] datum empfangen:', JSON.stringify(datum))
   if (!datum || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) {
+    console.log('[check_availability] datum ungueltig oder fehlt')
     return NextResponse.json({ hinweis: 'Datum fehlt. Bitte zuerst das Datum vom Kunden erfragen, dann erneut aufrufen.' })
   }
 
