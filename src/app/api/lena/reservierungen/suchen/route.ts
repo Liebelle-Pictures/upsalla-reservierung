@@ -10,10 +10,13 @@ export async function POST(request: NextRequest) {
   if (auth) return auth
 
   const body = await request.json().catch(() => ({}))
-  const telefon = body.telefon ?? request.nextUrl.searchParams.get('telefon')
+  console.log('[find_reservation] body empfangen:', JSON.stringify(body))
+
+  const telefon = body.telefon ?? body.Telefon ?? body.phone ?? request.nextUrl.searchParams.get('telefon')
 
   if (!telefon) {
-    return NextResponse.json({ fehler: 'telefon fehlt' }, { status: 400 })
+    console.log('[find_reservation] telefon fehlt, body keys:', Object.keys(body))
+    return NextResponse.json({ fehler: 'telefon fehlt', empfangen: body }, { status: 400 })
   }
 
   const { data: kunde } = await supabaseAdmin
