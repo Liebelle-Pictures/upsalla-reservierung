@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: `Noch fehlende Angaben: ${[!datum && 'datum', !zeitslot && 'zeitslot', !typ && 'typ', !kinder_anzahl && 'kinder_anzahl', !vorname && 'vorname', !nachname && 'nachname', !telefon && 'telefon'].filter(Boolean).join(', ')}. Bitte beim Kunden erfragen.` })
   }
 
+  // Jahreskorrektur: LLM verwendet manchmal falsches Jahr
+  const datumKorrigiert = parseInt(datum.slice(0, 4)) < 2026 ? '2026' + datum.slice(4) : datum
+
   // loge_id aus loge_name auflösen falls nötig
   let loge_id = loge_id_raw
   if (!loge_id && loge_name) {
@@ -59,7 +62,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: 'Loge nicht angegeben. Bitte Loge vom Kunden erfragen.' })
   }
 
-  const weekend = istWochenende(new Date(datum + 'T00:00:00'))
+  const weekend = istWochenende(new Date(datumKorrigiert + 'T00:00:00'))
   const gesamtbetrag = berechneGesamtbetrag(kinder_anzahl, weekend)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = weekend ? 27.0 : 23.0
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
     .from('reservierungen')
     .select('id')
     .eq('loge_id', loge_id)
-    .eq('datum', datum)
+    .eq('datum', datumKorrigiert)
     .eq('zeitslot', zeitslot)
     .eq('status', 'STORNIERT')
     .maybeSingle()
@@ -104,7 +107,7 @@ export async function POST(request: NextRequest) {
     kunde_id: kundeId,
     typ,
     status: 'BESTAETIGT_AUSSTEHEND',
-    datum,
+    datum: datumKorrigiert,
     zeitslot,
     kinder_anzahl,
     erwachsene_anzahl: 0,
@@ -138,7 +141,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Bestätigungs-SMS senden
-  const datumAnzeige = new Date(datum + 'T00:00:00').toLocaleDateString('de-DE', {
+  const datumAnzeige = new Date(datumKorrigiert + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
   const zeitAnzeige = zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
@@ -151,7 +154,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     erfolg: true,
     reservierung_id: reservierungId,
-    datum,
+    datum: datumKorrigiert,
     gesamtbetrag,
     anzahlung: anzahlungBetrag,
   })
