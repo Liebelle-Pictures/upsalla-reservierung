@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ fehler: 'Ungültiges JSON' }, { status: 400 })
   }
 
-  const { datum, loge_id, zeitslot, typ, kinder_anzahl, vorname, nachname, telefon, email, notizen } = body as {
+  const { datum, loge_id: loge_id_raw, loge_name, zeitslot, typ, kinder_anzahl, vorname, nachname, telefon, email, notizen } = body as {
     datum: string
-    loge_id: string
+    loge_id?: string
+    loge_name?: string
     zeitslot: number
     typ: string
     kinder_anzahl: number
@@ -33,8 +34,27 @@ export async function POST(request: NextRequest) {
     notizen?: string
   }
 
-  if (!datum || !loge_id || !zeitslot || !typ || !kinder_anzahl || !vorname || !nachname || !telefon) {
-    return NextResponse.json({ fehler: 'Pflichtfelder fehlen: datum, loge_id, zeitslot, typ, kinder_anzahl, vorname, nachname, telefon' }, { status: 400 })
+  if (!datum || !zeitslot || !typ || !kinder_anzahl || !vorname || !nachname || !telefon) {
+    return NextResponse.json({ hinweis: `Noch fehlende Angaben: ${[!datum && 'datum', !zeitslot && 'zeitslot', !typ && 'typ', !kinder_anzahl && 'kinder_anzahl', !vorname && 'vorname', !nachname && 'nachname', !telefon && 'telefon'].filter(Boolean).join(', ')}. Bitte beim Kunden erfragen.` })
+  }
+
+  // loge_id aus loge_name auflösen falls nötig
+  let loge_id = loge_id_raw
+  if (!loge_id && loge_name) {
+    const { data: loge } = await supabaseAdmin
+      .from('logen')
+      .select('id')
+      .eq('standort_id', WUPPERTAL_STANDORT_ID)
+      .ilike('name', `%${loge_name}%`)
+      .maybeSingle()
+    if (!loge) {
+      return NextResponse.json({ hinweis: `Loge "${loge_name}" nicht gefunden. Bitte eine der verfügbaren Logen auswählen.` })
+    }
+    loge_id = loge.id
+  }
+
+  if (!loge_id) {
+    return NextResponse.json({ hinweis: 'Loge nicht angegeben. Bitte Loge vom Kunden erfragen.' })
   }
 
   const weekend = istWochenende(new Date(datum + 'T00:00:00'))
