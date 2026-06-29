@@ -6,12 +6,7 @@ import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/lena/verfuegbarkeit?datum=YYYY-MM-DD
-export async function GET(request: NextRequest) {
-  const auth = pruefeLenaAuth(request)
-  if (auth) return auth
-
-  const datum = request.nextUrl.searchParams.get('datum')
+async function handleVerfuegbarkeit(datum: string) {
   if (!datum || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) {
     return NextResponse.json({ fehler: 'datum fehlt (Format: YYYY-MM-DD)' }, { status: 400 })
   }
@@ -44,9 +39,24 @@ export async function GET(request: NextRequest) {
         loge_name: loge.name,
         ist_babywelt: loge.ist_babywelt,
         zeitslot: s.nummer,
-        uhrzeit: `${s.start} – ${s.ende} Uhr`,
+        uhrzeit: `${s.start} - ${s.ende} Uhr`,
       }))
   )
 
   return NextResponse.json({ datum, verfuegbar })
+}
+
+export async function GET(request: NextRequest) {
+  const auth = pruefeLenaAuth(request)
+  if (auth) return auth
+  const datum = request.nextUrl.searchParams.get('datum') ?? ''
+  return handleVerfuegbarkeit(datum)
+}
+
+export async function POST(request: NextRequest) {
+  const auth = pruefeLenaAuth(request)
+  if (auth) return auth
+  const body = await request.json().catch(() => ({}))
+  const datum = body.datum ?? request.nextUrl.searchParams.get('datum') ?? ''
+  return handleVerfuegbarkeit(datum)
 }
