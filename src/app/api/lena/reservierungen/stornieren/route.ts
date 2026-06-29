@@ -17,8 +17,10 @@ export async function POST(request: NextRequest) {
   const auth = pruefeLenaAuth(request)
   if (auth) return auth
 
-  const { id, attest } = await request.json() as { id: string; attest?: boolean }
-  if (!id) return NextResponse.json({ fehler: 'id fehlt' }, { status: 400 })
+  const body = await request.json().catch(() => ({}))
+  const args = body.args ?? body
+  const { id, attest } = args as { id: string; attest?: boolean }
+  if (!id) return NextResponse.json({ hinweis: 'Reservierungs-ID fehlt. Bitte zuerst find_reservation aufrufen.' })
 
   const { data: reservierung } = await supabaseAdmin
     .from('reservierungen')

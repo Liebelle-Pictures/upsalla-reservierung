@@ -8,19 +8,26 @@ export const dynamic = 'force-dynamic'
 
 function normalisiertDatum(raw: string): string | null {
   if (!raw) return null
-  // YYYY-MM-DD (korrekt)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
-  // YYYY-M-D (ohne Nullauffüllung)
+  let result: string | null = null
+  // YYYY-MM-DD oder YYYY-M-D
   const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
-  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`
-  // DD.MM.YYYY (deutsches Format)
-  const deMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
-  if (deMatch) return `${deMatch[3]}-${deMatch[2].padStart(2, '0')}-${deMatch[1].padStart(2, '0')}`
+  if (isoMatch) result = `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`
+  // DD.MM.YYYY
+  if (!result) {
+    const deMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+    if (deMatch) result = `${deMatch[3]}-${deMatch[2].padStart(2, '0')}-${deMatch[1].padStart(2, '0')}`
+  }
   // D. MonatName YYYY
-  const monate: Record<string, string> = { januar:'01',februar:'02',märz:'03',april:'04',mai:'05',juni:'06',juli:'07',august:'08',september:'09',oktober:'10',november:'11',dezember:'12' }
-  const nameMatch = raw.toLowerCase().match(/(\d{1,2})\.?\s+(\w+)\s+(\d{4})/)
-  if (nameMatch && monate[nameMatch[2]]) return `${nameMatch[3]}-${monate[nameMatch[2]]}-${nameMatch[1].padStart(2, '0')}`
-  return null
+  if (!result) {
+    const monate: Record<string, string> = { januar:'01',februar:'02',märz:'03',april:'04',mai:'05',juni:'06',juli:'07',august:'08',september:'09',oktober:'10',november:'11',dezember:'12' }
+    const nameMatch = raw.toLowerCase().match(/(\d{1,2})\.?\s+(\w+)\s+(\d{4})/)
+    if (nameMatch && monate[nameMatch[2]]) result = `${nameMatch[3]}-${monate[nameMatch[2]]}-${nameMatch[1].padStart(2, '0')}`
+  }
+  if (!result) return null
+  // Jahreskorrektur: LLM verwendet manchmal falsches Jahr
+  const jahr = parseInt(result.slice(0, 4))
+  if (jahr < 2026) result = '2026' + result.slice(4)
+  return result
 }
 
 async function handleVerfuegbarkeit(datumRaw: string) {
@@ -77,7 +84,9 @@ export async function POST(request: NextRequest) {
   const auth = pruefeLenaAuth(request)
   if (auth) return auth
   const body = await request.json().catch(() => ({}))
-  console.log('[check_availability] body:', JSON.stringify(body))
-  const datumRaw = body.datum ?? request.nextUrl.searchParams.get('datum') ?? ''
+  // Retell sendet Argumente in body.args, nicht direkt in body
+  const args = body.args ?? body
+  const datumRaw = args.datum ?? request.nextUrl.searchParams.get('datum') ?? ''
+  console.log('[check_availability] datum:', JSON.stringify(datumRaw))
   return handleVerfuegbarkeit(String(datumRaw))
 }

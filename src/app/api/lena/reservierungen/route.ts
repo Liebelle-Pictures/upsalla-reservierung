@@ -15,7 +15,9 @@ export async function POST(request: NextRequest) {
 
   let body: Record<string, unknown>
   try {
-    body = await request.json()
+    const raw = await request.json()
+    // Retell sendet Argumente in body.args
+    body = (raw.args ?? raw) as Record<string, unknown>
   } catch {
     return NextResponse.json({ fehler: 'Ungültiges JSON' }, { status: 400 })
   }

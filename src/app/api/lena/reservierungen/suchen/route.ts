@@ -10,9 +10,11 @@ export async function POST(request: NextRequest) {
   if (auth) return auth
 
   const body = await request.json().catch(() => ({}))
-  console.log('[find_reservation] body empfangen:', JSON.stringify(body))
+  // Retell sendet Argumente in body.args
+  const args = body.args ?? body
+  console.log('[find_reservation] args:', JSON.stringify(args))
 
-  const telefon = body.telefon ?? body.Telefon ?? body.phone ?? request.nextUrl.searchParams.get('telefon')
+  const telefon = args.telefon ?? args.Telefon ?? args.phone ?? request.nextUrl.searchParams.get('telefon')
 
   if (!telefon) {
     console.log('[find_reservation] telefon fehlt, body keys:', Object.keys(body))
