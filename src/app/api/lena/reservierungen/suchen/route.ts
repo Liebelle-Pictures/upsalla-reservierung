@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
   if (!telefon) {
     console.log('[find_reservation] telefon fehlt, body keys:', Object.keys(body))
-    return NextResponse.json({ fehler: 'telefon fehlt', empfangen: body }, { status: 400 })
+    return NextResponse.json({ hinweis: 'Bitte zuerst die Telefonnummer des Kunden erfragen, dann erneut aufrufen.' })
   }
 
   const { data: kunde } = await supabaseAdmin

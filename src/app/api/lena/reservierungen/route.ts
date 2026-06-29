@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
 
   const telefon = request.nextUrl.searchParams.get('telefon')
   if (!telefon) {
-    return NextResponse.json({ fehler: 'telefon Parameter fehlt' }, { status: 400 })
+    return NextResponse.json({ hinweis: 'Bitte zuerst die Telefonnummer des Kunden erfragen, dann erneut aufrufen.' })
   }
 
   const { data: kunde } = await supabaseAdmin
