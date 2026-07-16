@@ -5,6 +5,7 @@ import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istWochenende } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
+import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -162,16 +163,34 @@ export async function POST(request: NextRequest) {
     reservierungId = neu.id
   }
 
-  // Bestätigungs-SMS senden
+  // Stripe Checkout Session erstellen
   const datumAnzeige = new Date(datumKorrigiert + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
   const zeitAnzeige = zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
 
-  await sendeSMS(
-    telefon,
-    `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige} Uhr) für ${kinder_anzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Wir freuen uns auf Sie! 🎉`,
-  )
+  let zahlungsLink: string | null = null
+  try {
+    zahlungsLink = await erstelleAnzahlungsSession({
+      betragCent: Math.round(anzahlungBetrag * 100),
+      reservierungId,
+      beschreibung: `Anzahlung Geburtstag Upsalla – ${datumAnzeige} (${zeitAnzeige})`,
+      kundenEmail: email as string | undefined,
+    })
+    await supabaseAdmin
+      .from('reservierungen')
+      .update({ stripe_payment_link: zahlungsLink })
+      .eq('id', reservierungId)
+  } catch (e) {
+    console.error('[Stripe] Fehler beim Erstellen der Session:', e)
+  }
+
+  // SMS mit Zahlungslink senden
+  const smsText = zahlungsLink
+    ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Bitte hier bezahlen um den Termin zu sichern: ${zahlungsLink}`
+    : `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Wir melden uns in Kuerze mit dem Zahlungslink.`
+
+  await sendeSMS(telefon, smsText)
 
   return NextResponse.json({
     erfolg: true,
@@ -179,6 +198,7 @@ export async function POST(request: NextRequest) {
     datum: datumKorrigiert,
     gesamtbetrag,
     anzahlung: anzahlungBetrag,
+    zahlungslink: zahlungsLink ?? 'wird nachgesendet',
   })
 }
 
