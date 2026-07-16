@@ -83,6 +83,10 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
         <Zeile label="Erwachsene" wert={r.erwachsene_anzahl} />
         <Zeile label="Gesamtbetrag" wert={`${Number(r.gesamtbetrag).toFixed(2)} €`} />
         <Zeile label="Anzahlung (20%)" wert={`${Number(r.anzahlung_betrag).toFixed(2)} €`} />
+        <Zeile
+          label="Restzahlung vor Ort (80%)"
+          wert={`${(Number(r.gesamtbetrag) - Number(r.anzahlung_betrag)).toFixed(2)} €`}
+        />
         {r.notizen && <Zeile label="Notizen" wert={r.notizen} />}
       </div>
 
@@ -113,8 +117,16 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
       )}
 
       {r.status === 'BESTAETIGT_BEZAHLT' && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 font-medium">
-          ✓ Anzahlung von {Number(r.anzahlung_betrag).toFixed(2)} € erhalten
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+          <p className="text-sm text-green-800 font-medium">
+            ✓ Anzahlung von {Number(r.anzahlung_betrag).toFixed(2)} € erhalten
+          </p>
+          <div className="flex justify-between items-center bg-white rounded-lg px-4 py-3 border border-green-200">
+            <span className="text-sm font-semibold text-gray-700">Noch zu kassieren:</span>
+            <span className="text-lg font-bold text-gray-900">
+              {(Number(r.gesamtbetrag) - Number(r.anzahlung_betrag)).toFixed(2)} €
+            </span>
+          </div>
         </div>
       )}
 
