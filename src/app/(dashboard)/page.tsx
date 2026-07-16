@@ -33,11 +33,11 @@ export default async function TagesansichtPage({ searchParams }: Props) {
   const datum = datumParam ?? new Date().toISOString().slice(0, 10)
 
   return (
-    <div className="space-y-4">
+    <>
       <DatumNavigator datum={datum} />
       <Suspense fallback={<KalenderSkeleton />}>
         <Kalender datum={datum} />
       </Suspense>
-    </div>
+    </>
   )
 }

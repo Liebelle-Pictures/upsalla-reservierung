@@ -24,29 +24,29 @@ export function ReservierungKarte({ reservierung }: Props) {
   return (
     <button
       onClick={() => router.push(`/reservierungen/${reservierung.id}`)}
-      className="w-full h-full min-h-[88px] rounded-2xl text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-      style={{
-        background: cfg.bg,
-        border: `1.5px solid ${cfg.border}`,
-      }}
+      className="w-full h-full flex flex-col text-left transition-all hover:scale-[1.02] active:scale-[0.98] rounded-2xl overflow-hidden"
+      style={{ background: cfg.bg, border: `1.5px solid ${cfg.border}` }}
     >
-      {/* Colored top strip */}
-      <div
-        className="h-1 rounded-t-2xl mb-3"
-        style={{ background: cfg.dot }}
-      />
-      <div className="px-3 pb-3">
-        <div className="text-sm font-semibold leading-tight truncate" style={{ color: '#1D1D1F' }}>
-          {reservierung.kunden
-            ? `${reservierung.kunden.vorname} ${reservierung.kunden.nachname}`
-            : '—'}
-        </div>
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="text-xs" style={{ color: '#6E6E73' }}>
+      {/* Farbstreifen oben */}
+      <div className="h-1.5 flex-shrink-0" style={{ background: cfg.dot }} />
+
+      <div className="flex flex-col flex-1 justify-between p-3">
+        {/* Name */}
+        <div>
+          <div className="text-sm font-bold leading-tight" style={{ color: '#1D1D1F' }}>
+            {reservierung.kunden
+              ? `${reservierung.kunden.vorname} ${reservierung.kunden.nachname}`
+              : '—'}
+          </div>
+          <div className="text-sm mt-1" style={{ color: '#6E6E73' }}>
             {reservierung.kinder_anzahl} Kinder
-          </span>
+          </div>
+        </div>
+
+        {/* Status Badge */}
+        <div className="mt-2">
           <span
-            className="text-[11px] font-medium px-1.5 py-0.5 rounded-md"
+            className="inline-block text-xs font-semibold px-2 py-0.5 rounded-lg"
             style={{ color: cfg.text, background: `${cfg.dot}22` }}
           >
             {cfg.label}

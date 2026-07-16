@@ -6,27 +6,29 @@ interface Props {
   datum: string
   logeId: string
   zeitslot: number
+  farbe?: string
 }
 
-export function FreierSlot({ datum, logeId, zeitslot }: Props) {
+export function FreierSlot({ datum, logeId, zeitslot, farbe = '#C7C7CC' }: Props) {
   const router = useRouter()
-
-  const handleClick = () => {
-    const params = new URLSearchParams({ datum, loge_id: logeId, zeitslot: String(zeitslot) })
-    router.push(`/reservierungen/neu?${params}`)
-  }
 
   return (
     <button
-      onClick={handleClick}
-      className="w-full h-full min-h-[88px] rounded-2xl flex items-center justify-center group transition-all hover:scale-[1.02]"
-      style={{ border: '1.5px dashed var(--border)', color: 'var(--text-tertiary)' }}
+      onClick={() => {
+        const params = new URLSearchParams({ datum, loge_id: logeId, zeitslot: String(zeitslot) })
+        router.push(`/reservierungen/neu?${params}`)
+      }}
+      className="w-full h-full flex flex-col items-center justify-center gap-2 rounded-2xl group transition-all hover:scale-[1.02] active:scale-[0.98]"
+      style={{ border: `2px dashed ${farbe}50` }}
     >
       <span
-        className="text-2xl font-light transition-colors group-hover:text-violet-400"
-        style={{ color: 'var(--border-strong)' }}
+        className="w-10 h-10 rounded-full flex items-center justify-center text-xl font-light transition-all group-hover:scale-110"
+        style={{ background: `${farbe}15`, color: farbe }}
       >
         +
+      </span>
+      <span className="text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: farbe }}>
+        Neu
       </span>
     </button>
   )

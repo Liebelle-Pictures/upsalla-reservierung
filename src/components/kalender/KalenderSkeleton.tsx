@@ -1,23 +1,34 @@
 export function KalenderSkeleton() {
   return (
-    <div className="overflow-x-auto -mx-4 px-4 animate-pulse">
-      <div className="min-w-[640px]">
-        {/* Kopfzeile */}
-        <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: '80px repeat(9, minmax(110px, 1fr))' }}>
-          <div />
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="h-10 bg-gray-200 rounded-lg" />
-          ))}
-        </div>
-
-        {/* 1-2 Zeitslot Zeilen */}
+    <div
+      className="rounded-2xl animate-pulse overflow-hidden"
+      style={{
+        height: 'calc(100vh - 145px)',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+      }}
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '72px repeat(7, minmax(140px, 1fr))',
+          gridTemplateRows: 'auto 1fr 1fr',
+          gap: '8px',
+          padding: '16px',
+          height: '100%',
+        }}
+      >
+        <div />
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="rounded-2xl" style={{ background: '#E5E5EA' }} />
+        ))}
         {Array.from({ length: 2 }).map((_, row) => (
-          <div key={row} className="grid gap-2 mb-2" style={{ gridTemplateColumns: '80px repeat(9, minmax(110px, 1fr))' }}>
-            <div className="h-20 bg-gray-100 rounded-lg" />
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 rounded-lg" />
+          <>
+            <div key={`t${row}`} className="rounded-2xl" style={{ background: '#F2F2F7' }} />
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="rounded-2xl" style={{ background: '#F2F2F7' }} />
             ))}
-          </div>
+          </>
         ))}
       </div>
     </div>
