@@ -8,6 +8,26 @@ import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
 
+function normalisiertDatum(raw: string): string | null {
+  if (!raw) return null
+  let result: string | null = null
+  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (isoMatch) result = `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`
+  if (!result) {
+    const deMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+    if (deMatch) result = `${deMatch[3]}-${deMatch[2].padStart(2, '0')}-${deMatch[1].padStart(2, '0')}`
+  }
+  if (!result) {
+    const monate: Record<string, string> = { januar:'01',februar:'02',märz:'03',april:'04',mai:'05',juni:'06',juli:'07',august:'08',september:'09',oktober:'10',november:'11',dezember:'12' }
+    const nameMatch = raw.toLowerCase().match(/(\d{1,2})\.?\s+(\w+)\s+(\d{4})/)
+    if (nameMatch && monate[nameMatch[2]]) result = `${nameMatch[3]}-${monate[nameMatch[2]]}-${nameMatch[1].padStart(2, '0')}`
+  }
+  if (!result) return null
+  const jahr = parseInt(result.slice(0, 4))
+  if (jahr < 2026) result = '2026' + result.slice(4)
+  return result
+}
+
 // POST /api/lena/reservierungen — Reservierung durch Lena erstellen
 export async function POST(request: NextRequest) {
   const auth = pruefeLenaAuth(request)
@@ -40,8 +60,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: `Noch fehlende Angaben: ${[!datum && 'datum', !zeitslot && 'zeitslot', !typ && 'typ', !kinder_anzahl && 'kinder_anzahl', !vorname && 'vorname', !nachname && 'nachname', !telefon && 'telefon'].filter(Boolean).join(', ')}. Bitte beim Kunden erfragen.` })
   }
 
-  // Jahreskorrektur: LLM verwendet manchmal falsches Jahr
-  const datumKorrigiert = parseInt(datum.slice(0, 4)) < 2026 ? '2026' + datum.slice(4) : datum
+  const datumKorrigiert = normalisiertDatum(datum)
+  if (!datumKorrigiert) {
+    return NextResponse.json({ hinweis: 'Datum konnte nicht verarbeitet werden. Bitte nochmal mit dem Kunden bestätigen.' })
+  }
 
   // loge_id aus loge_name auflösen falls nötig
   let loge_id = loge_id_raw
