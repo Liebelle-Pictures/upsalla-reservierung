@@ -29,8 +29,8 @@ export async function erstelleAnzahlungsSession(
     ],
     metadata: { reservierung_id: params.reservierungId },
     customer_email: params.kundenEmail ?? undefined,
-    success_url: `${process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL}/reservierungen/${params.reservierungId}?zahlung=erfolg&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL}/reservierungen/${params.reservierungId}?zahlung=abgebrochen`,
+    success_url: `${process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL}/zahlung/erfolg?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL}/zahlung/abgebrochen`,
   })
 
   return session.url!
