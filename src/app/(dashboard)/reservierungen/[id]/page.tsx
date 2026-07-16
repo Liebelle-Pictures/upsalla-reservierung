@@ -22,8 +22,10 @@ export default async function ReservierungDetailPage({ params, searchParams }: P
   if (!reservierung) notFound()
 
   return (
-    <div className="max-w-xl">
-      <h1 className="text-xl font-bold text-gray-900 mb-6">Reservierung</h1>
+    <div>
+      <h1 className="text-2xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
+        Reservierung
+      </h1>
       <ReservierungDetailView reservierung={reservierung} />
     </div>
   )

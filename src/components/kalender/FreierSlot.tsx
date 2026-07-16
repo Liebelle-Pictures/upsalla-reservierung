@@ -19,9 +19,15 @@ export function FreierSlot({ datum, logeId, zeitslot }: Props) {
   return (
     <button
       onClick={handleClick}
-      className="w-full h-full min-h-[80px] rounded-lg border-2 border-dashed border-gray-200 text-gray-400 text-xs hover:border-blue-300 hover:text-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center"
+      className="w-full h-full min-h-[88px] rounded-2xl flex items-center justify-center group transition-all hover:scale-[1.02]"
+      style={{ border: '1.5px dashed var(--border)', color: 'var(--text-tertiary)' }}
     >
-      + Neu
+      <span
+        className="text-2xl font-light transition-colors group-hover:text-violet-400"
+        style={{ color: 'var(--border-strong)' }}
+      >
+        +
+      </span>
     </button>
   )
 }

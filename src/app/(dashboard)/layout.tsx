@@ -4,9 +4,12 @@ import { MobileNav } from '@/components/layout/MobileNav'
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-full">
+    <div className="flex h-full" style={{ background: 'var(--bg)' }}>
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4">
+      <main
+        className="flex-1 overflow-y-auto"
+        style={{ padding: '28px 28px 88px', minWidth: 0 }}
+      >
         {children}
       </main>
       <MobileNav />

@@ -20,15 +20,18 @@ export default async function ReservierungenListePage({ searchParams }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">
-          Reservierungen
-          <span className="ml-2 text-sm font-normal text-gray-400">
-            ({reservierungen.length})
-          </span>
-        </h1>
+        <div>
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Reservierungen
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            {reservierungen.length} Einträge
+          </p>
+        </div>
         <Link
           href="/reservierungen/neu"
-          className="min-h-[48px] px-4 flex items-center bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700"
+          className="h-11 px-5 flex items-center rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"
+          style={{ background: 'var(--accent)' }}
         >
           + Neue Reservierung
         </Link>

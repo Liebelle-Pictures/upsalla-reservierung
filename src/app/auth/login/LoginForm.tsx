@@ -7,9 +7,13 @@ export function LoginForm() {
   const [state, action, pending] = useActionState<LoginState, FormData>(anmelden, undefined)
 
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} className="space-y-4">
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="email"
+          className="block text-sm font-medium mb-1.5"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           E-Mail
         </label>
         <input
@@ -18,13 +22,24 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          className="w-full h-12 px-4 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full h-12 px-4 rounded-xl text-base outline-none transition-all"
+          style={{
+            background: 'var(--bg)',
+            border: '1.5px solid var(--border)',
+            color: 'var(--text-primary)',
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
+          onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           placeholder="mitarbeiter@upsalla.de"
         />
       </div>
 
       <div>
-        <label htmlFor="passwort" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="passwort"
+          className="block text-sm font-medium mb-1.5"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           Passwort
         </label>
         <input
@@ -33,21 +48,35 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="w-full h-12 px-4 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full h-12 px-4 rounded-xl text-base outline-none transition-all"
+          style={{
+            background: 'var(--bg)',
+            border: '1.5px solid var(--border)',
+            color: 'var(--text-primary)',
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
+          onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           placeholder="••••••••"
         />
       </div>
 
       {state?.fehler && (
-        <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
+        <div
+          className="px-4 py-3 rounded-xl text-sm"
+          style={{ background: '#FFF1F0', color: 'var(--status-red)', border: '1px solid #FECACA' }}
+        >
           {state.fehler}
-        </p>
+        </div>
       )}
 
       <button
         type="submit"
         disabled={pending}
-        className="w-full h-12 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full h-12 rounded-xl font-semibold text-white transition-all mt-2"
+        style={{
+          background: pending ? 'var(--border-strong)' : 'var(--accent)',
+          cursor: pending ? 'not-allowed' : 'pointer',
+        }}
       >
         {pending ? 'Anmelden…' : 'Anmelden'}
       </button>
