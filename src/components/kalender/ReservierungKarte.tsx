@@ -24,7 +24,7 @@ export function ReservierungKarte({ reservierung }: Props) {
   return (
     <button
       onClick={() => router.push(`/reservierungen/${reservierung.id}`)}
-      className="w-full h-full flex flex-col text-left rounded-xl overflow-hidden"
+      className="w-full h-full flex flex-col rounded-xl overflow-hidden"
       style={{
         background: cfg.bg,
         border: `1.5px solid ${cfg.border}`,
@@ -32,22 +32,38 @@ export function ReservierungKarte({ reservierung }: Props) {
       }}
     >
       {/* Farbstreifen */}
-      <div className="h-1.5 flex-shrink-0" style={{ background: cfg.dot }} />
+      <div style={{ height: '6px', flexShrink: 0, background: cfg.dot }} />
 
-      <div className="flex flex-col flex-1 justify-between p-3">
-        <div>
-          <div className="font-bold text-sm leading-snug" style={{ color: 'var(--color-text)' }}>
-            {reservierung.kunden
-              ? `${reservierung.kunden.vorname} ${reservierung.kunden.nachname}`
-              : '—'}
-          </div>
-          <div className="text-sm mt-1 font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            {reservierung.kinder_anzahl} Kinder
-          </div>
+      {/* Content: vertikal und horizontal zentriert */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          textAlign: 'center',
+          padding: '16px',
+        }}
+      >
+        <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1E1B4B', lineHeight: 1.2 }}>
+          {reservierung.kunden
+            ? `${reservierung.kunden.vorname} ${reservierung.kunden.nachname}`
+            : '—'}
+        </div>
+        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#4B5563' }}>
+          {reservierung.kinder_anzahl} Kinder
         </div>
         <span
-          className="mt-2 inline-block text-xs font-semibold px-2 py-0.5 rounded-lg"
-          style={{ color: cfg.text, background: `${cfg.dot}22` }}
+          style={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            padding: '4px 10px',
+            borderRadius: '20px',
+            color: cfg.text,
+            background: `${cfg.dot}22`,
+          }}
         >
           {cfg.label}
         </span>
