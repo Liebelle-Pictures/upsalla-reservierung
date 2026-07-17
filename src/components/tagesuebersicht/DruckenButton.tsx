@@ -4,8 +4,14 @@ export function DruckenButton() {
   return (
     <button
       onClick={() => window.print()}
-      className="min-h-[48px] px-5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors print:hidden"
+      className="h-11 px-5 font-bold rounded-xl text-white print:hidden flex items-center gap-2"
+      style={{ background: 'var(--color-primary)' }}
     >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+      </svg>
       Drucken
     </button>
   )

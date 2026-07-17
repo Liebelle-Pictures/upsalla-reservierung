@@ -14,13 +14,13 @@ export default async function KundenPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">
+      <div className="mb-6">
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
           Kundendatenbank
-          <span className="ml-2 text-sm font-normal text-gray-400">
-            ({kunden.length})
-          </span>
         </h1>
+        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 500 }}>
+          {kunden.length} Kunden
+        </p>
       </div>
 
       <Suspense>

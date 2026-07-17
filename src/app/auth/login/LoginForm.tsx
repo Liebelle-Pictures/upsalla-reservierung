@@ -11,8 +11,8 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="email"
-          className="block text-sm font-medium mb-1.5"
-          style={{ color: 'var(--text-secondary)' }}
+          className="block text-sm mb-1.5"
+          style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}
         >
           E-Mail
         </label>
@@ -22,14 +22,15 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          className="w-full h-12 px-4 rounded-xl text-base outline-none transition-all"
+          className="w-full h-12 px-4 rounded-xl text-sm outline-none"
           style={{
-            background: 'var(--bg)',
-            border: '1.5px solid var(--border)',
-            color: 'var(--text-primary)',
+            background: 'var(--color-bg)',
+            border: '2px solid var(--color-border)',
+            color: 'var(--color-text)',
+            fontWeight: 500,
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-          onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+          onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+          onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
           placeholder="mitarbeiter@upsalla.de"
         />
       </div>
@@ -37,8 +38,8 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="passwort"
-          className="block text-sm font-medium mb-1.5"
-          style={{ color: 'var(--text-secondary)' }}
+          className="block text-sm mb-1.5"
+          style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}
         >
           Passwort
         </label>
@@ -48,22 +49,23 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="w-full h-12 px-4 rounded-xl text-base outline-none transition-all"
+          className="w-full h-12 px-4 rounded-xl text-sm outline-none"
           style={{
-            background: 'var(--bg)',
-            border: '1.5px solid var(--border)',
-            color: 'var(--text-primary)',
+            background: 'var(--color-bg)',
+            border: '2px solid var(--color-border)',
+            color: 'var(--color-text)',
+            fontWeight: 500,
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-          onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+          onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+          onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
           placeholder="••••••••"
         />
       </div>
 
       {state?.fehler && (
         <div
-          className="px-4 py-3 rounded-xl text-sm"
-          style={{ background: '#FFF1F0', color: 'var(--status-red)', border: '1px solid #FECACA' }}
+          className="px-4 py-3 rounded-xl text-sm font-semibold"
+          style={{ background: '#FFF1F0', color: '#B91C1C', border: '1px solid #FECACA' }}
         >
           {state.fehler}
         </div>
@@ -72,10 +74,11 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full h-12 rounded-xl font-semibold text-white transition-all mt-2"
+        className="w-full h-12 rounded-xl font-bold text-white mt-2"
         style={{
-          background: pending ? 'var(--border-strong)' : 'var(--accent)',
+          background: pending ? 'var(--color-border)' : 'var(--color-primary)',
           cursor: pending ? 'not-allowed' : 'pointer',
+          fontSize: '0.95rem',
         }}
       >
         {pending ? 'Anmelden…' : 'Anmelden'}

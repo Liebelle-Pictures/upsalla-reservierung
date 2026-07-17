@@ -63,10 +63,10 @@ export function MobileNav() {
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 flex z-10"
       style={{
-        background: 'rgba(255,255,255,0.92)',
+        background: 'rgba(30,27,75,0.97)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderTop: '1px solid var(--border)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
@@ -77,10 +77,10 @@ export function MobileNav() {
             key={href}
             href={href}
             className="flex-1 flex flex-col items-center justify-center py-3 gap-1 min-h-[56px]"
-            style={{ color: aktiv ? 'var(--accent)' : 'var(--text-tertiary)' }}
+            style={{ color: aktiv ? '#A5B4FC' : 'rgba(165,180,252,0.5)' }}
           >
             {icon}
-            <span className="text-[10px] font-medium">{label}</span>
+            <span className="text-[10px] font-semibold">{label}</span>
           </Link>
         )
       })}
@@ -88,14 +88,14 @@ export function MobileNav() {
         <button
           type="submit"
           className="w-full flex flex-col items-center justify-center py-3 gap-1 min-h-[56px]"
-          style={{ color: 'var(--status-red)' }}
+          style={{ color: '#F87171' }}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
             <polyline points="16 17 21 12 16 7"/>
             <line x1="21" y1="12" x2="9" y2="12"/>
           </svg>
-          <span className="text-[10px] font-medium">Logout</span>
+          <span className="text-[10px] font-semibold">Logout</span>
         </button>
       </form>
     </nav>

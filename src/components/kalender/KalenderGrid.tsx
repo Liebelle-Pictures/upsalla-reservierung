@@ -7,23 +7,23 @@ import { FreierSlot } from './FreierSlot'
 
 interface LogeKonfig {
   farbe: string
-  bg: string
+  textfarbe: string
   kategorie: 'Jungen' | 'Mädchen' | 'Unisex'
 }
 
 const LOGE_KONFIG: Array<{ match: (n: string) => boolean } & LogeKonfig> = [
-  { match: n => n.includes('jungs'),                                farbe: '#2563EB', bg: '#EFF6FF', kategorie: 'Jungen'  },
-  { match: n => n.includes('spiderman') || n.includes('marvel'),   farbe: '#DC2626', bg: '#FEF2F2', kategorie: 'Jungen'  },
-  { match: n => n.includes('anna') || n.includes('elsa'),          farbe: '#0EA5E9', bg: '#F0F9FF', kategorie: 'Mädchen' },
-  { match: n => n.includes('einhorn'),                              farbe: '#A855F7', bg: '#FAF5FF', kategorie: 'Mädchen' },
-  { match: n => n.includes('mädchen'),                             farbe: '#EC4899', bg: '#FDF2F8', kategorie: 'Mädchen' },
-  { match: n => n.includes('märchen') || n.includes('regenbogen'), farbe: '#14B8A6', bg: '#F0FDFA', kategorie: 'Unisex'  },
-  { match: n => n.includes('safari'),                              farbe: '#F59E0B', bg: '#FFFBEB', kategorie: 'Unisex'  },
+  { match: n => n.includes('jungs'),                                farbe: '#2563EB', textfarbe: '#fff', kategorie: 'Jungen'  },
+  { match: n => n.includes('spiderman') || n.includes('marvel'),   farbe: '#DC2626', textfarbe: '#fff', kategorie: 'Jungen'  },
+  { match: n => n.includes('anna') || n.includes('elsa'),          farbe: '#0284C7', textfarbe: '#fff', kategorie: 'Mädchen' },
+  { match: n => n.includes('einhorn'),                              farbe: '#9333EA', textfarbe: '#fff', kategorie: 'Mädchen' },
+  { match: n => n.includes('mädchen'),                             farbe: '#DB2777', textfarbe: '#fff', kategorie: 'Mädchen' },
+  { match: n => n.includes('märchen') || n.includes('regenbogen'), farbe: '#0D9488', textfarbe: '#fff', kategorie: 'Unisex'  },
+  { match: n => n.includes('safari'),                              farbe: '#D97706', textfarbe: '#fff', kategorie: 'Unisex'  },
 ]
 
 function getLogeKonfig(name: string): LogeKonfig {
   const n = name.toLowerCase()
-  return LOGE_KONFIG.find(k => k.match(n)) ?? { farbe: '#8B5CF6', bg: '#F5F3FF', kategorie: 'Unisex' }
+  return LOGE_KONFIG.find(k => k.match(n)) ?? { farbe: '#6366F1', textfarbe: '#fff', kategorie: 'Unisex' }
 }
 
 interface Props {
@@ -42,67 +42,64 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
       <div
         className="flex items-center justify-center rounded-2xl"
         style={{
-          height: 'calc(100vh - 145px)',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
+          height: 'calc(100vh - 160px)',
+          background: 'var(--color-surface)',
+          border: '1.5px solid var(--color-border)',
         }}
       >
-        <p style={{ color: 'var(--text-tertiary)' }}>Keine Logen gefunden.</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>Keine Logen gefunden.</p>
       </div>
     )
   }
 
   return (
-    /* Äußerer Container: feste Höhe, horizontaler Scroll auf kleinen Screens */
     <div
       className="rounded-2xl overflow-auto"
       style={{
-        height: 'calc(100vh - 145px)',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
+        height: 'calc(100vh - 160px)',
+        background: 'var(--color-surface)',
+        border: '1.5px solid var(--color-border)',
+        boxShadow: '0 1px 8px rgba(99,102,241,0.06)',
       }}
     >
-      {/* CSS Grid: füllt die gesamte Höhe */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: `72px repeat(${logen.length}, minmax(140px, 1fr))`,
+          gridTemplateColumns: `72px repeat(${logen.length}, minmax(150px, 1fr))`,
           gridTemplateRows: `auto repeat(${zeitslots.length}, 1fr)`,
-          gap: '8px',
-          padding: '16px',
-          minWidth: `${72 + logen.length * 140 + 16}px`,
+          gap: '10px',
+          padding: '14px',
+          minWidth: `${72 + logen.length * 150 + 28}px`,
           height: '100%',
         }}
       >
-        {/* Ecke oben links */}
+        {/* Ecke */}
         <div />
 
-        {/* Logen-Kopfzeilen */}
+        {/* Logen-Kopfzeilen: Solid-farbig mit weißem Text */}
         {logen.map(loge => {
           const cfg = getLogeKonfig(loge.name)
           return (
             <div
               key={loge.id}
-              className="flex flex-col items-center justify-center rounded-2xl px-3 py-3 text-center"
+              className="flex flex-col items-center justify-center px-3 py-3 text-center"
               style={{
-                background: cfg.bg,
-                borderTop: `4px solid ${cfg.farbe}`,
+                background: cfg.farbe,
+                borderRadius: '10px 10px 0 0',
+                boxShadow: `0 2px 8px ${cfg.farbe}40`,
               }}
             >
-              <span
-                className="font-bold leading-tight text-sm"
-                style={{ color: '#1D1D1F' }}
-              >
+              <span style={{ fontWeight: 700, color: cfg.textfarbe, fontSize: '0.85rem', lineHeight: 1.2 }}>
                 {loge.name}
               </span>
               <span
-                className="mt-2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-                style={{ background: cfg.farbe, color: 'white' }}
+                className="mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+                style={{ background: 'rgba(255,255,255,0.25)', color: '#fff' }}
               >
                 {cfg.kategorie}
               </span>
               {loge.ist_babywelt && (
-                <span className="mt-1 text-[10px] font-medium" style={{ color: cfg.farbe }}>
+                <span className="mt-1 text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.8)' }}>
                   Babywelt
                 </span>
               )}
@@ -115,12 +112,12 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
           <Fragment key={slot.nummer}>
             {/* Zeit-Label */}
             <div
-              className="flex flex-col items-center justify-center rounded-2xl"
-              style={{ background: 'var(--bg)', color: 'var(--text-secondary)' }}
+              className="flex flex-col items-center justify-center rounded-xl"
+              style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}
             >
-              <span className="text-sm font-semibold">{slot.start}</span>
+              <span className="text-sm font-bold">{slot.start}</span>
               <span className="text-xs my-0.5" style={{ color: 'var(--text-tertiary)' }}>–</span>
-              <span className="text-sm font-semibold">{slot.ende}</span>
+              <span className="text-sm font-bold">{slot.ende}</span>
             </div>
 
             {/* Logen-Zellen */}
@@ -130,18 +127,16 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
               return (
                 <div
                   key={`${loge.id}-${slot.nummer}`}
-                  className="rounded-2xl h-full"
-                  style={{ background: `${cfg.farbe}09` }}
+                  className="rounded-xl h-full"
+                  style={{
+                    background: `${cfg.farbe}08`,
+                    border: reservierung ? 'none' : `2px dashed ${cfg.farbe}35`,
+                  }}
                 >
                   {reservierung ? (
                     <ReservierungKarte reservierung={reservierung} />
                   ) : (
-                    <FreierSlot
-                      datum={datum}
-                      logeId={loge.id}
-                      zeitslot={slot.nummer}
-                      farbe={cfg.farbe}
-                    />
+                    <FreierSlot datum={datum} logeId={loge.id} zeitslot={slot.nummer} farbe={cfg.farbe} />
                   )}
                 </div>
               )

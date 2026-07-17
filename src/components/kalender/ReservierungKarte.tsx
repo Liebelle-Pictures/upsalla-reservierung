@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation'
 import type { Reservierung } from '@/types/reservierung'
 
 const STATUS_CONFIG: Record<Reservierung['status'], { dot: string; bg: string; border: string; text: string; label: string }> = {
-  BESTAETIGT_BEZAHLT:    { dot: '#34C759', bg: '#F0FFF4', border: '#BBF7D0', text: '#166534', label: 'Bezahlt' },
-  BESTAETIGT_AUSSTEHEND: { dot: '#FF9F0A', bg: '#FFFBEB', border: '#FDE68A', text: '#92400E', label: 'Ausstehend' },
-  STORNIERT:             { dot: '#FF3B30', bg: '#FFF1F0', border: '#FECACA', text: '#991B1B', label: 'Storniert' },
-  GRUPPENANGEBOT:        { dot: '#007AFF', bg: '#EFF6FF', border: '#BFDBFE', text: '#1E40AF', label: 'Gruppe' },
-  INTERN_GESPERRT:       { dot: '#8E8E93', bg: '#F4F4F5', border: '#E4E4E7', text: '#52525B', label: 'Gesperrt' },
+  BESTAETIGT_BEZAHLT:    { dot: '#22C55E', bg: '#F0FFF4', border: '#BBF7D0', text: '#15803D', label: 'Bezahlt' },
+  BESTAETIGT_AUSSTEHEND: { dot: '#EAB308', bg: '#FEFCE8', border: '#FEF08A', text: '#A16207', label: 'Ausstehend' },
+  STORNIERT:             { dot: '#EF4444', bg: '#FFF1F0', border: '#FECACA', text: '#B91C1C', label: 'Storniert' },
+  GRUPPENANGEBOT:        { dot: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE', text: '#1D4ED8', label: 'Gruppe' },
+  INTERN_GESPERRT:       { dot: '#9CA3AF', bg: '#F4F4F5', border: '#E4E4E7', text: '#6B7280', label: 'Gesperrt' },
 }
 
 interface Props {
@@ -24,34 +24,33 @@ export function ReservierungKarte({ reservierung }: Props) {
   return (
     <button
       onClick={() => router.push(`/reservierungen/${reservierung.id}`)}
-      className="w-full h-full flex flex-col text-left transition-all hover:scale-[1.02] active:scale-[0.98] rounded-2xl overflow-hidden"
-      style={{ background: cfg.bg, border: `1.5px solid ${cfg.border}` }}
+      className="w-full h-full flex flex-col text-left rounded-xl overflow-hidden"
+      style={{
+        background: cfg.bg,
+        border: `1.5px solid ${cfg.border}`,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      }}
     >
-      {/* Farbstreifen oben */}
+      {/* Farbstreifen */}
       <div className="h-1.5 flex-shrink-0" style={{ background: cfg.dot }} />
 
       <div className="flex flex-col flex-1 justify-between p-3">
-        {/* Name */}
         <div>
-          <div className="text-sm font-bold leading-tight" style={{ color: '#1D1D1F' }}>
+          <div className="font-bold text-sm leading-snug" style={{ color: 'var(--color-text)' }}>
             {reservierung.kunden
               ? `${reservierung.kunden.vorname} ${reservierung.kunden.nachname}`
               : '—'}
           </div>
-          <div className="text-sm mt-1" style={{ color: '#6E6E73' }}>
+          <div className="text-sm mt-1 font-medium" style={{ color: 'var(--color-text-muted)' }}>
             {reservierung.kinder_anzahl} Kinder
           </div>
         </div>
-
-        {/* Status Badge */}
-        <div className="mt-2">
-          <span
-            className="inline-block text-xs font-semibold px-2 py-0.5 rounded-lg"
-            style={{ color: cfg.text, background: `${cfg.dot}22` }}
-          >
-            {cfg.label}
-          </span>
-        </div>
+        <span
+          className="mt-2 inline-block text-xs font-semibold px-2 py-0.5 rounded-lg"
+          style={{ color: cfg.text, background: `${cfg.dot}22` }}
+        >
+          {cfg.label}
+        </span>
       </div>
     </button>
   )

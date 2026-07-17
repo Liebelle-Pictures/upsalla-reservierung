@@ -29,24 +29,32 @@ export default async function TagesuebersichtPage({ searchParams }: Props) {
       </div>
 
       {/* Druckbarer Bereich */}
-      <div className="bg-white rounded-xl border border-gray-100 p-6 print:border-0 print:p-0 print:rounded-none">
-        {/* Kopfzeile für den Druck */}
+      <div
+        className="rounded-2xl p-6 print:border-0 print:p-0 print:rounded-none"
+        style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)', boxShadow: '0 1px 8px rgba(99,102,241,0.05)' }}
+      >
+        {/* Kopfzeile */}
         <div className="mb-6 print:mb-4">
           <div className="flex items-center justify-between print:mb-2">
             <div>
-              <h1 className="text-xl font-bold text-gray-900 print:text-2xl">
+              <h1
+                className="print:text-2xl"
+                style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.01em' }}
+              >
                 Upsalla Kinderpark Wuppertal
               </h1>
-              <p className="text-gray-500 text-sm print:text-base">Tagesübersicht — {datumAnzeige}</p>
+              <p className="text-sm print:text-base font-medium" style={{ color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                Tagesübersicht — {datumAnzeige}
+              </p>
             </div>
-            <div className="text-right text-sm text-gray-400 print:text-gray-600">
+            <div className="text-right text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
               <div>{reservierungen.length} Reservierung{reservierungen.length !== 1 ? 'en' : ''}</div>
               <div className="print:block hidden">
                 Gedruckt: {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
               </div>
             </div>
           </div>
-          <hr className="mt-3 border-gray-200" />
+          <div className="mt-4" style={{ height: '1px', background: 'var(--color-border)' }} />
         </div>
 
         <TagesuebersichtTabelle

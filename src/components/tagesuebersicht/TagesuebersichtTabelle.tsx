@@ -5,11 +5,11 @@ const STATUSLABEL: Record<string, string> = {
   INTERN_GESPERRT:       'Intern',
 }
 
-const STATUSFARBEN: Record<string, string> = {
-  BESTAETIGT_BEZAHLT:    'text-green-700 font-semibold',
-  BESTAETIGT_AUSSTEHEND: 'text-yellow-600 font-semibold',
-  GRUPPENANGEBOT:        'text-blue-700',
-  INTERN_GESPERRT:       'text-gray-500',
+const STATUSFARBEN: Record<string, { color: string; bg: string }> = {
+  BESTAETIGT_BEZAHLT:    { color: '#15803D', bg: '#F0FFF4' },
+  BESTAETIGT_AUSSTEHEND: { color: '#A16207', bg: '#FEFCE8' },
+  GRUPPENANGEBOT:        { color: '#1D4ED8', bg: '#EFF6FF' },
+  INTERN_GESPERRT:       { color: '#6B7280', bg: '#F4F4F5' },
 }
 
 const ZEITSLOTS: Record<number, string> = {
@@ -37,59 +37,86 @@ interface Props {
 export function TagesuebersichtTabelle({ reservierungen }: Props) {
   if (reservierungen.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400 print:py-8">
+      <div
+        className="text-center py-16 rounded-xl print:py-8"
+        style={{ color: 'var(--color-text-muted)' }}
+      >
         Keine Reservierungen für diesen Tag.
       </div>
     )
   }
 
-  // Nach Zeitslot gruppieren
-  const slot1 = reservierungen.filter((r) => r.zeitslot === 1)
-  const slot2 = reservierungen.filter((r) => r.zeitslot === 2)
+  const slot1 = reservierungen.filter(r => r.zeitslot === 1)
+  const slot2 = reservierungen.filter(r => r.zeitslot === 2)
 
   const RenderSlot = ({ slot, titel }: { slot: Reservierung[]; titel: string }) => {
     if (slot.length === 0) return null
     return (
-      <div className="mb-6">
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2 print:text-xs">
+      <div className="mb-8">
+        <h2
+          className="text-xs font-bold uppercase tracking-widest mb-3 print:text-xs"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
           {titel}
         </h2>
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-gray-100 print:bg-gray-200">
-              <th className="text-left px-3 py-2 font-semibold text-gray-700 rounded-tl-lg">Loge</th>
-              <th className="text-left px-3 py-2 font-semibold text-gray-700">Name</th>
-              <th className="text-left px-3 py-2 font-semibold text-gray-700">Telefon</th>
-              <th className="text-center px-3 py-2 font-semibold text-gray-700">Kinder</th>
-              <th className="text-center px-3 py-2 font-semibold text-gray-700">Erw.</th>
-              <th className="text-left px-3 py-2 font-semibold text-gray-700">Notizen</th>
-              <th className="text-left px-3 py-2 font-semibold text-gray-700 rounded-tr-lg">Anzahlung</th>
-            </tr>
-          </thead>
-          <tbody>
-            {slot.map((r, idx) => (
-              <tr
-                key={r.id}
-                className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-              >
-                <td className="px-3 py-3 font-medium text-gray-900">{r.logen?.name ?? '—'}</td>
-                <td className="px-3 py-3 text-gray-800">
-                  {r.kunden ? `${r.kunden.vorname} ${r.kunden.nachname}` : '—'}
-                </td>
-                <td className="px-3 py-3 text-gray-600">{r.kunden?.telefon ?? '—'}</td>
-                <td className="px-3 py-3 text-center text-gray-800">{r.kinder_anzahl}</td>
-                <td className="px-3 py-3 text-center text-gray-800">{r.erwachsene_anzahl}</td>
-                <td className="px-3 py-3 text-gray-600 text-xs max-w-[200px]">{r.notizen ?? '—'}</td>
-                <td className={`px-3 py-3 text-xs ${STATUSFARBEN[r.status] ?? 'text-gray-600'}`}>
-                  {STATUSLABEL[r.status] ?? r.status}
-                  <div className="text-gray-400 font-normal">
-                    {Number(r.anzahlung_betrag).toFixed(2)} €
-                  </div>
-                </td>
+        <div
+          className="overflow-hidden rounded-xl print:rounded-none"
+          style={{ border: '1.5px solid var(--color-border)' }}
+        >
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr style={{ background: 'var(--color-sidebar-bg)' }}>
+                {['Loge', 'Name', 'Telefon', 'Kinder', 'Erw.', 'Notizen', 'Anzahlung'].map((h, i) => (
+                  <th
+                    key={h}
+                    className={`px-3 py-3 font-bold text-left ${i === 3 || i === 4 ? 'text-center' : ''}`}
+                    style={{ color: '#E0E7FF', fontSize: '0.75rem', letterSpacing: '0.03em' }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {slot.map((r, idx) => {
+                const sf = STATUSFARBEN[r.status]
+                return (
+                  <tr key={r.id} style={{ background: idx % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)' }}>
+                    <td className="px-3 py-3 font-bold" style={{ color: 'var(--color-text)' }}>
+                      {r.logen?.name ?? '—'}
+                    </td>
+                    <td className="px-3 py-3 font-medium" style={{ color: 'var(--color-text)' }}>
+                      {r.kunden ? `${r.kunden.vorname} ${r.kunden.nachname}` : '—'}
+                    </td>
+                    <td className="px-3 py-3" style={{ color: 'var(--color-text-muted)' }}>
+                      {r.kunden?.telefon ?? '—'}
+                    </td>
+                    <td className="px-3 py-3 text-center font-bold" style={{ color: 'var(--color-text)' }}>
+                      {r.kinder_anzahl}
+                    </td>
+                    <td className="px-3 py-3 text-center" style={{ color: 'var(--color-text-muted)' }}>
+                      {r.erwachsene_anzahl}
+                    </td>
+                    <td className="px-3 py-3 text-xs max-w-[200px]" style={{ color: 'var(--color-text-muted)' }}>
+                      {r.notizen ?? '—'}
+                    </td>
+                    <td className="px-3 py-3">
+                      <span
+                        className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                        style={{ color: sf?.color ?? '#6B7280', background: sf?.bg ?? '#F4F4F5' }}
+                      >
+                        {STATUSLABEL[r.status] ?? r.status}
+                      </span>
+                      <div className="text-xs mt-0.5 font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                        {Number(r.anzahlung_betrag).toFixed(2)} €
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     )
   }

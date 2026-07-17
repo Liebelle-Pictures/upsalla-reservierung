@@ -27,30 +27,47 @@ export function MonatsNavigator({ jahr, monat }: Props) {
   const istAktuell = heute.getFullYear() === jahr && heute.getMonth() + 1 === monat
 
   return (
-    <div className="flex items-center gap-3">
-      <button
-        onClick={() => navigiere(-1)}
-        className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-lg"
-      >
-        ‹
-      </button>
-      <div className="flex-1 text-center">
-        <p className="font-semibold text-gray-900">{MONATE[monat - 1]} {jahr}</p>
+    <div className="flex items-center justify-between mb-6">
+      <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+        {MONATE[monat - 1]} {jahr}
+      </h1>
+      <div className="flex items-center gap-2">
         {!istAktuell && (
           <button
             onClick={() => router.push(`/kalender?jahr=${heute.getFullYear()}&monat=${heute.getMonth() + 1}`)}
-            className="text-xs text-blue-600 hover:underline mt-0.5"
+            className="h-9 px-4 rounded-lg text-sm font-semibold"
+            style={{ background: 'var(--color-primary)', color: '#fff' }}
           >
-            Aktueller Monat
+            Aktuell
           </button>
         )}
+        <div
+          className="flex rounded-xl overflow-hidden"
+          style={{ border: '1.5px solid var(--color-border)', background: 'var(--color-surface)' }}
+        >
+          <button
+            onClick={() => navigiere(-1)}
+            className="w-10 h-10 flex items-center justify-center"
+            style={{ color: 'var(--color-text)' }}
+            aria-label="Vorheriger Monat"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <div style={{ width: '1px', background: 'var(--color-border)' }} />
+          <button
+            onClick={() => navigiere(1)}
+            className="w-10 h-10 flex items-center justify-center"
+            style={{ color: 'var(--color-text)' }}
+            aria-label="Nächster Monat"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
       </div>
-      <button
-        onClick={() => navigiere(1)}
-        className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-lg"
-      >
-        ›
-      </button>
     </div>
   )
 }
