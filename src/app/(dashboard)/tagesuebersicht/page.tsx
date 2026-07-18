@@ -19,9 +19,18 @@ export default async function TagesuebersichtPage({ searchParams }: Props) {
   })
 
   return (
-    <div className="space-y-4">
+    <>
+      <style>{`
+        @media print {
+          @page { margin: 15mm 12mm; size: A4 portrait; }
+          body { background: white !important; }
+          nav, aside, header { display: none !important; }
+          .print\\:hidden { display: none !important; }
+        }
+      `}</style>
+
       {/* Navigation + Drucken — wird beim Drucken ausgeblendet */}
-      <div className="flex items-center gap-4 print:hidden">
+      <div className="flex items-center gap-4 mb-6 print:hidden">
         <div className="flex-1">
           <DatumNavigator datum={datum} basePath="/tagesuebersicht" />
         </div>
@@ -29,38 +38,34 @@ export default async function TagesuebersichtPage({ searchParams }: Props) {
       </div>
 
       {/* Druckbarer Bereich */}
-      <div
-        className="rounded-2xl p-6 print:border-0 print:p-0 print:rounded-none"
-        style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)', boxShadow: '0 1px 8px rgba(99,102,241,0.05)' }}
-      >
+      <div style={{ background: '#ffffff', padding: '0' }}>
+
         {/* Kopfzeile */}
-        <div className="mb-6 print:mb-4">
-          <div className="flex items-center justify-between print:mb-2">
+        <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '2px solid #E2E8F0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h1
-                className="print:text-2xl"
-                style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.01em' }}
-              >
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1E1B4B', letterSpacing: '-0.01em', lineHeight: 1.1 }}>
                 Upsalla Kinderpark Wuppertal
-              </h1>
-              <p className="text-sm print:text-base font-medium" style={{ color: 'var(--color-text-muted)', marginTop: '4px' }}>
+              </div>
+              <div style={{ fontSize: '0.95rem', color: '#6366F1', fontWeight: 600, marginTop: '4px' }}>
                 Tagesübersicht — {datumAnzeige}
-              </p>
+              </div>
             </div>
-            <div className="text-right text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-              <div>{reservierungen.length} Reservierung{reservierungen.length !== 1 ? 'en' : ''}</div>
+            <div style={{ textAlign: 'right', fontSize: '0.82rem', color: '#64748B', lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, color: '#1E293B' }}>
+                {reservierungen.length} Reservierung{reservierungen.length !== 1 ? 'en' : ''}
+              </div>
               <div className="print:block hidden">
                 Gedruckt: {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
               </div>
             </div>
           </div>
-          <div className="mt-4" style={{ height: '1px', background: 'var(--color-border)' }} />
         </div>
 
         <TagesuebersichtTabelle
           reservierungen={reservierungen as unknown as Parameters<typeof TagesuebersichtTabelle>[0]['reservierungen']}
         />
       </div>
-    </div>
+    </>
   )
 }
