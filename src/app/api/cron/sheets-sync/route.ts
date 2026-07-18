@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   const zeilen = kunden.map(k => {
     // Letzte Reservierung finden
-    const reservierungen = (k.reservierungen ?? []) as { datum: string; logen: { name: string } | null }[]
+    const reservierungen = (k.reservierungen ?? []) as unknown as { datum: string; logen: { name: string } | null }[]
     const letzteRes = reservierungen.sort((a, b) => b.datum.localeCompare(a.datum))[0]
 
     return {
