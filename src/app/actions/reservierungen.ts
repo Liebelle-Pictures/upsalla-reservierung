@@ -94,7 +94,7 @@ export async function reservierungErstellen(
     kundeId = neuerKunde.id
   }
 
-  const neuerStatus = typ === 'GRUPPE' || typ === 'INTERN' ? 'GRUPPENANGEBOT' : 'BESTAETIGT_AUSSTEHEND'
+  const neuerStatus = typ === 'INTERN' ? 'INTERN_GESPERRT' : typ === 'GRUPPE' ? 'GRUPPENANGEBOT' : 'BESTAETIGT_AUSSTEHEND'
   const reservierungsDaten = {
     standort_id: WUPPERTAL_STANDORT_ID,
     loge_id: logeId,
