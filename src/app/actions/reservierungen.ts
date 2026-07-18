@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
-import { istWochenende } from '@/lib/utils/zeitslots'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 import type { ReservierungTyp } from '@/types/reservierung'
@@ -49,9 +49,9 @@ export async function reservierungErstellen(
     return { fehler: 'Mindestens 1 Kind erforderlich.' }
   }
 
-  // Preisberechnung
-  const weekend = istWochenende(new Date(datum + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend)
+  // Preisberechnung (inkl. NRW Feiertage und Schulferien)
+  const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
+  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = weekend ? 27.0 : 23.0
 
@@ -187,19 +187,58 @@ export async function reservierungErstellen(
     }
   }
 
+  const datumAnzeige = new Date(datum + 'T00:00:00').toLocaleDateString('de-DE', {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+  })
+  const zeitAnzeige = zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
+  const zeitslotText = zeitslot === 1 ? 'Slot 1 — 10:30–14:30 Uhr' : 'Slot 2 — 15:00–19:00 Uhr'
+
   // Bestätigungs-SMS an Kunde senden
   try {
     const { sendeSMS } = await import('@/lib/twilio/client')
-    const datumAnzeige = new Date(datum + 'T00:00:00').toLocaleDateString('de-DE', {
-      weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
-    })
-    const zeitAnzeige = zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
     await sendeSMS(
       telefon,
-      `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige} Uhr) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Wir freuen uns auf Sie!`,
+      `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige} Uhr) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Stornobedingungen: freizo.app/agb`,
     )
   } catch (err) {
     console.error('[Twilio] SMS-Fehler:', err)
+  }
+
+  // Bestätigungs-E-Mail an Kunde senden (nur wenn E-Mail vorhanden)
+  if (email) {
+    try {
+      const { sendeEmail } = await import('@/lib/resend/client')
+      const { buchungsbestaetigungHtml } = await import('@/lib/resend/templates')
+
+      // Aktuellen Stripe-Link lesen (wurde ggf. gerade gesetzt)
+      const { data: aktuelleRes } = await supabaseAdmin
+        .from('reservierungen')
+        .select('stripe_payment_link, logen(name)')
+        .eq('id', reservierung.id)
+        .single()
+
+      const logeData = aktuelleRes?.logen
+      const logeName = (Array.isArray(logeData) ? logeData[0] : logeData as unknown as { name: string } | null)?.name ?? 'Loge'
+
+      await sendeEmail({
+        an: email,
+        betreff: `Buchungsbestätigung – ${datumAnzeige} · Upsalla Kinderpark Wuppertal`,
+        html: buchungsbestaetigungHtml({
+          vorname,
+          nachname,
+          datum: datumAnzeige,
+          zeitslot: zeitslotText,
+          logeName,
+          kinderAnzahl,
+          erwachseneAnzahl,
+          gesamtbetrag,
+          anzahlungBetrag,
+          stripePaymentLink: aktuelleRes?.stripe_payment_link ?? null,
+        }),
+      })
+    } catch (err) {
+      console.error('[Resend] E-Mail-Fehler:', err)
+    }
   }
 
   revalidatePath('/')
@@ -230,8 +269,8 @@ export async function reservierungAktualisieren(
 
   if (kinderAnzahl < 1) return { fehler: 'Mindestens 1 Kind erforderlich.' }
 
-  const weekend = istWochenende(new Date(datum + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend)
+  const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
+  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = weekend ? 27.0 : 23.0
 
@@ -275,6 +314,24 @@ export async function verifizierteZahlung(reservierungId: string, sessionId: str
           stripe_payment_intent_id: session.payment_intent as string ?? null,
         })
         .eq('id', reservierungId)
+
+      // E-Mail aus Stripe Checkout in Kundendatenbank übernehmen
+      const stripeEmail = session.customer_details?.email
+      if (stripeEmail) {
+        const { data: res } = await supabaseAdmin
+          .from('reservierungen')
+          .select('kunde_id')
+          .eq('id', reservierungId)
+          .single()
+
+        if (res?.kunde_id) {
+          await supabaseAdmin
+            .from('kunden')
+            .update({ email: stripeEmail })
+            .eq('id', res.kunde_id)
+        }
+      }
+
       revalidatePath(`/reservierungen/${reservierungId}`)
       revalidatePath('/')
     }
@@ -283,16 +340,92 @@ export async function verifizierteZahlung(reservierungId: string, sessionId: str
   }
 }
 
-export async function reservierungStornieren(id: string): Promise<void> {
+export async function reservierungStornieren(
+  id: string,
+  mitAttest = false,
+): Promise<{ rueckerstattungBetrag: number }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Nicht angemeldet.')
+
+  // Alle nötigen Daten vorab laden
+  const { data: res } = await supabaseAdmin
+    .from('reservierungen')
+    .select('datum, zeitslot, anzahlung_betrag, stripe_payment_intent_id, kunden(vorname, telefon, email), logen(name)')
+    .eq('id', id)
+    .single()
+
+  if (!res) throw new Error('Reservierung nicht gefunden.')
+
+  // 7-Tage-Regel prüfen
+  const terminDatum = new Date(res.datum + 'T00:00:00')
+  const heute = new Date(); heute.setHours(0, 0, 0, 0)
+  const tageVorher = Math.ceil((terminDatum.getTime() - heute.getTime()) / (1000 * 60 * 60 * 24))
+  const kostenlosStorno = tageVorher >= 7 || mitAttest
+
+  // Stripe-Rückerstattung auslösen wenn berechtigt
+  let rueckerstattungBetrag = 0
+  if (kostenlosStorno && res.stripe_payment_intent_id && (res.anzahlung_betrag ?? 0) > 0) {
+    try {
+      const { erstelleRueckerstattung } = await import('@/lib/stripe/client')
+      await erstelleRueckerstattung(res.stripe_payment_intent_id)
+      rueckerstattungBetrag = res.anzahlung_betrag ?? 0
+    } catch (err) {
+      console.error('[Stripe] Rückerstattung fehlgeschlagen:', err)
+    }
+  }
 
   await supabaseAdmin
     .from('reservierungen')
     .update({ status: 'STORNIERT' })
     .eq('id', id)
 
+  const kunde = (Array.isArray(res.kunden) ? res.kunden[0] : res.kunden) as { vorname: string; telefon: string | null; email: string | null } | null
+  const logeRaw = res.logen
+  const loge = (Array.isArray(logeRaw) ? logeRaw[0] : logeRaw) as unknown as { name: string } | null
+
+  const datumAnzeige = terminDatum.toLocaleDateString('de-DE', {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+  })
+  const zeitAnzeige = res.zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
+  const zeitslotText = res.zeitslot === 1 ? 'Slot 1 — 10:30–14:30 Uhr' : 'Slot 2 — 15:00–19:00 Uhr'
+
+  // Storno-SMS
+  if (kunde?.telefon) {
+    try {
+      const { sendeSMS } = await import('@/lib/twilio/client')
+      const smsText = rueckerstattungBetrag > 0
+        ? `Hallo ${kunde.vorname}, Ihre Reservierung am ${datumAnzeige} (${zeitAnzeige} Uhr) wurde storniert. Die Anzahlung von ${rueckerstattungBetrag.toFixed(2)} € wird innerhalb von 5–10 Werktagen erstattet.`
+        : `Hallo ${kunde.vorname}, Ihre Reservierung am ${datumAnzeige} (${zeitAnzeige} Uhr) wurde storniert. Bei Fragen: 0202 2623339`
+      await sendeSMS(kunde.telefon, smsText)
+    } catch (err) {
+      console.error('[Twilio] Storno-SMS-Fehler:', err)
+    }
+  }
+
+  // Storno-E-Mail
+  if (kunde?.email) {
+    try {
+      const { sendeEmail } = await import('@/lib/resend/client')
+      const { stornobestaetigungHtml } = await import('@/lib/resend/templates')
+
+      await sendeEmail({
+        an: kunde.email,
+        betreff: `Stornierungsbestätigung – ${datumAnzeige} · Upsalla Kinderpark Wuppertal`,
+        html: stornobestaetigungHtml({
+          vorname: kunde.vorname,
+          datum: datumAnzeige,
+          zeitslot: zeitslotText,
+          logeName: loge?.name ?? 'Loge',
+          rueckerstattungBetrag: rueckerstattungBetrag > 0 ? rueckerstattungBetrag : undefined,
+        }),
+      })
+    } catch (err) {
+      console.error('[Resend] Storno-E-Mail-Fehler:', err)
+    }
+  }
+
   revalidatePath('/')
   revalidatePath(`/reservierungen/${id}`)
+  return { rueckerstattungBetrag }
 }

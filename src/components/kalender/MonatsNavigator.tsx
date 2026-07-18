@@ -26,48 +26,70 @@ export function MonatsNavigator({ jahr, monat }: Props) {
   const heute = new Date()
   const istAktuell = heute.getFullYear() === jahr && heute.getMonth() + 1 === monat
 
+  const pfeilStyle: React.CSSProperties = {
+    width: '56px',
+    height: '56px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '14px',
+    background: 'var(--color-surface)',
+    border: '2px solid var(--color-border)',
+    color: 'var(--color-primary)',
+    cursor: 'pointer',
+    flexShrink: 0,
+    WebkitTapHighlightColor: 'transparent',
+  }
+
   return (
-    <div className="flex items-center justify-between mb-6">
-      <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-        {MONATE[monat - 1]} {jahr}
-      </h1>
-      <div className="flex items-center gap-2">
-        {!istAktuell && (
+    <div className="mb-5">
+      {/* Hauptzeile: ← Monat Jahr → */}
+      <div className="flex items-center justify-between">
+        <button onClick={() => navigiere(-1)} style={pfeilStyle} aria-label="Vorheriger Monat">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+
+        {/* Monat + Jahr */}
+        <div style={{ textAlign: 'center', lineHeight: 1 }}>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+            {MONATE[monat - 1]}
+          </div>
+          <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginTop: '2px' }}>
+            {jahr}
+          </div>
+        </div>
+
+        <button onClick={() => navigiere(1)} style={pfeilStyle} aria-label="Nächster Monat">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* "Heute"-Chip — nur wenn nicht aktueller Monat */}
+      {!istAktuell && (
+        <div style={{ textAlign: 'center', marginTop: '10px' }}>
           <button
             onClick={() => router.push(`/kalender?jahr=${heute.getFullYear()}&monat=${heute.getMonth() + 1}`)}
-            className="h-9 px-4 rounded-lg text-sm font-semibold"
-            style={{ background: 'var(--color-primary)', color: '#fff' }}
+            style={{
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              color: 'var(--color-primary)',
+              background: '#EEF2FF',
+              border: 'none',
+              borderRadius: '20px',
+              padding: '5px 16px',
+              cursor: 'pointer',
+              height: '30px',
+              WebkitTapHighlightColor: 'transparent',
+            }}
           >
-            Aktuell
-          </button>
-        )}
-        <div
-          className="flex rounded-xl overflow-hidden"
-          style={{ border: '1.5px solid var(--color-border)', background: 'var(--color-surface)' }}
-        >
-          <button
-            onClick={() => navigiere(-1)}
-            className="w-10 h-10 flex items-center justify-center"
-            style={{ color: 'var(--color-text)' }}
-            aria-label="Vorheriger Monat"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-          <div style={{ width: '1px', background: 'var(--color-border)' }} />
-          <button
-            onClick={() => navigiere(1)}
-            className="w-10 h-10 flex items-center justify-center"
-            style={{ color: 'var(--color-text)' }}
-            aria-label="Nächster Monat"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
+            Heute
           </button>
         </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { reservierungStornieren } from '@/app/actions/reservierungen'
 
 /* ── Status-Konfiguration ── */
@@ -42,6 +42,7 @@ interface Props {
     gesamtbetrag: number
     anzahlung_betrag: number
     stripe_payment_link: string | null
+    stripe_payment_intent_id: string | null
     notizen: string | null
     erstellt_am: string
     kunden: { vorname: string; nachname: string; telefon: string; email: string | null } | null
@@ -125,11 +126,21 @@ function Divider() {
 export function ReservierungDetailView({ reservierung: r }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const [stornoOffen, setStornoOffen] = useState(false)
+  const [mitAttest, setMitAttest] = useState(false)
+  const [stornoErgebnis, setStornoErgebnis] = useState<{ rueckerstattungBetrag: number } | null>(null)
 
-  const handleStorno = () => {
-    if (!confirm('Reservierung wirklich stornieren?')) return
+  // Tage bis zum Termin (negativ = vergangen)
+  const heute = new Date(); heute.setHours(0, 0, 0, 0)
+  const terminDatum = new Date(r.datum + 'T00:00:00')
+  const tageVorher = Math.ceil((terminDatum.getTime() - heute.getTime()) / (1000 * 60 * 60 * 24))
+  const hatGezahlt = !!r.stripe_payment_intent_id
+  const kostenlosStorno = tageVorher >= 7 || mitAttest
+
+  const handleStornoBestaetigen = () => {
     startTransition(async () => {
-      await reservierungStornieren(r.id)
+      const ergebnis = await reservierungStornieren(r.id, mitAttest)
+      setStornoErgebnis(ergebnis)
       router.refresh()
     })
   }
@@ -145,7 +156,7 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
   const kundenName = r.kunden ? `${r.kunden.vorname} ${r.kunden.nachname}` : '—'
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', paddingTop: '8px' }}>
 
       {/* Seitentitel */}
       <div style={{ marginBottom: '28px' }}>
@@ -256,6 +267,26 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
             gap: '16px',
           }}
         >
+          {/* Gesamtbetrag */}
+          <div>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#6B7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '6px',
+              }}
+            >
+              Gesamtbetrag
+            </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1E1B4B' }}>
+              {Number(r.gesamtbetrag).toFixed(2)} €
+            </div>
+          </div>
+          <div style={{ height: '1px', background: 'var(--color-border)' }} />
+
           {/* Status-Banner */}
           <div
             style={{
@@ -293,6 +324,26 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
                 padding: '20px',
               }}
             >
+              {/* Anzahlung erhalten */}
+              <div style={{ marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#15803D',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    marginBottom: '4px',
+                  }}
+                >
+                  Anzahlung erhalten
+                </div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#15803D' }}>
+                  {Number(r.anzahlung_betrag).toFixed(2)} €
+                </div>
+              </div>
+              <div style={{ height: '1px', background: '#86EFAC', margin: '12px 0' }} />
+              {/* Noch zu kassieren */}
               <div
                 style={{
                   fontSize: '0.75rem',
@@ -307,9 +358,6 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
               </div>
               <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#15803D', lineHeight: 1 }}>
                 {restbetrag.toFixed(2)} <span style={{ fontSize: '1.4rem' }}>€</span>
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#4ADE80', marginTop: '6px', fontWeight: 600 }}>
-                Anzahlung von {Number(r.anzahlung_betrag).toFixed(2)} € erhalten
               </div>
             </div>
           )}
@@ -362,9 +410,157 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
             </div>
           )}
 
+          {/* Storno-Ergebnis nach erfolgter Stornierung */}
+          {stornoErgebnis && (
+            <div
+              style={{
+                background: stornoErgebnis.rueckerstattungBetrag > 0 ? '#F0FFF4' : '#FEF3C7',
+                border: `1.5px solid ${stornoErgebnis.rueckerstattungBetrag > 0 ? '#86EFAC' : '#FCD34D'}`,
+                borderRadius: '12px',
+                padding: '16px 20px',
+              }}
+            >
+              {stornoErgebnis.rueckerstattungBetrag > 0 ? (
+                <>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Rückerstattung ausgelöst
+                  </div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#15803D' }}>
+                    {stornoErgebnis.rueckerstattungBetrag.toFixed(2)} €
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#166534', marginTop: '4px' }}>
+                    5–10 Werktage via Stripe
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: '0.85rem', color: '#92400E', lineHeight: 1.5 }}>
+                  Storniert — keine Rückerstattung (Storno unter 7 Tagen)
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Storno-Panel (Inline — kein window.confirm) */}
+          {stornoOffen && r.status !== 'STORNIERT' && !stornoErgebnis && (
+            <div
+              style={{
+                background: '#FFF1F0',
+                border: '1.5px solid #FCA5A5',
+                borderRadius: '12px',
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#B91C1C' }}>
+                Reservierung stornieren
+              </div>
+
+              {/* Tage-Info & Rückerstattungsanspruch */}
+              <div style={{ fontSize: '0.82rem', color: '#7F1D1D', lineHeight: 1.6 }}>
+                {tageVorher >= 7 ? (
+                  <>Noch <strong>{tageVorher} Tage</strong> bis zum Termin — kostenlose Stornierung, Anzahlung wird vollständig erstattet.</>
+                ) : tageVorher > 0 ? (
+                  <>Noch <strong>{tageVorher} {tageVorher === 1 ? 'Tag' : 'Tage'}</strong> bis zum Termin — Storno unter 7 Tagen: Anzahlung verfällt laut AGB.</>
+                ) : (
+                  <>Termin liegt in der Vergangenheit — keine Rückerstattung möglich.</>
+                )}
+              </div>
+
+              {/* Krankheitsattest-Option (nur wenn < 7 Tage und gezahlt) */}
+              {tageVorher < 7 && tageVorher > 0 && hatGezahlt && (
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    fontSize: '0.82rem',
+                    color: '#7F1D1D',
+                    lineHeight: 1.5,
+                    padding: '10px 12px',
+                    background: '#FEF2F2',
+                    borderRadius: '8px',
+                    border: '1px solid #FECACA',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={mitAttest}
+                    onChange={e => setMitAttest(e.target.checked)}
+                    style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0 }}
+                  />
+                  <span>
+                    <strong>Krankheitsattest vorhanden</strong> — Kind ist krank, ärztliches Attest liegt vor.
+                    Anzahlung wird vollständig zurückerstattet.
+                  </span>
+                </label>
+              )}
+
+              {/* Zusammenfassung was passiert */}
+              <div
+                style={{
+                  fontSize: '0.78rem',
+                  color: kostenlosStorno ? '#15803D' : '#92400E',
+                  background: kostenlosStorno ? '#F0FFF4' : '#FEF3C7',
+                  border: `1px solid ${kostenlosStorno ? '#86EFAC' : '#FCD34D'}`,
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  lineHeight: 1.5,
+                }}
+              >
+                {hatGezahlt
+                  ? kostenlosStorno
+                    ? `Anzahlung von ${Number(r.anzahlung_betrag).toFixed(2)} € wird zurückerstattet.`
+                    : `Anzahlung von ${Number(r.anzahlung_betrag).toFixed(2)} € verfällt.`
+                  : 'Keine Zahlung hinterlegt — Stornierung ohne Kosten.'}
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleStornoBestaetigen}
+                  disabled={pending}
+                  style={{
+                    flex: 1,
+                    height: '44px',
+                    borderRadius: '10px',
+                    background: '#EF4444',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    border: 'none',
+                    cursor: pending ? 'not-allowed' : 'pointer',
+                    opacity: pending ? 0.6 : 1,
+                  }}
+                >
+                  {pending ? 'Wird storniert…' : 'Jetzt stornieren'}
+                </button>
+                <button
+                  onClick={() => { setStornoOffen(false); setMitAttest(false) }}
+                  disabled={pending}
+                  style={{
+                    flex: 1,
+                    height: '44px',
+                    borderRadius: '10px',
+                    background: 'transparent',
+                    color: '#6B7280',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    border: '1.5px solid var(--color-border)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Aktions-Buttons: gestapelt, full-width */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-            {r.status !== 'STORNIERT' && (
+            {r.status !== 'STORNIERT' && !stornoErgebnis && (
               <button
                 onClick={() => router.push(`/reservierungen/${r.id}/bearbeiten`)}
                 style={{
@@ -382,24 +578,22 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
                 Bearbeiten
               </button>
             )}
-            {r.status !== 'STORNIERT' && (
+            {r.status !== 'STORNIERT' && !stornoOffen && !stornoErgebnis && (
               <button
-                onClick={handleStorno}
-                disabled={pending}
+                onClick={() => setStornoOffen(true)}
                 style={{
                   height: '48px',
                   borderRadius: '10px',
-                  background: '#EF4444',
-                  color: '#fff',
+                  background: '#FEF2F2',
+                  color: '#EF4444',
                   fontWeight: 700,
                   fontSize: '0.95rem',
-                  border: 'none',
-                  cursor: pending ? 'not-allowed' : 'pointer',
-                  opacity: pending ? 0.6 : 1,
+                  border: '1.5px solid #FECACA',
+                  cursor: 'pointer',
                   width: '100%',
                 }}
               >
-                {pending ? 'Stornieren…' : 'Stornieren'}
+                Stornieren
               </button>
             )}
             <button

@@ -38,14 +38,16 @@ Wochenende / Ferien / Feiertage (Sa, So):
 
 ### Pakete & Preise
 Paket WOCHENTAG:
-- Preis: 23,00 € / Kind
-- Mindestkinder: 6
-- Zusatzkind: 6,50 €
+- Preis: 23,00 € / Kind (alle Kinder × 23,00 €)
+- Mindestkinder: 6, Maximum: 20
 
 Paket WOCHENENDE/FERIEN/FEIERTAGE:
-- Preis: 27,00 € / Kind
-- Mindestkinder: 6
-- Zusatzkind: 7,50 €
+- Preis: 27,00 € / Kind (alle Kinder × 27,00 €)
+- Mindestkinder: 6, Maximum: 20
+
+Begleitpersonen (Erwachsene):
+- Erste 3 Begleitpersonen: gratis
+- Ab 4. Begleitperson: 23,00 € (Wochentag) / 27,00 € (Wochenende) pro Person
 
 ### Logenkapazität
 - 6–10 Kinder = 1 Tisch (halbe Loge)

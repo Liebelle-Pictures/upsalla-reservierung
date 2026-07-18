@@ -1,3 +1,5 @@
+import React from 'react'
+
 export function KalenderSkeleton() {
   return (
     <div
@@ -23,12 +25,12 @@ export function KalenderSkeleton() {
           <div key={i} className="rounded-2xl" style={{ background: '#E5E5EA' }} />
         ))}
         {Array.from({ length: 2 }).map((_, row) => (
-          <>
-            <div key={`t${row}`} className="rounded-2xl" style={{ background: '#F2F2F7' }} />
+          <React.Fragment key={row}>
+            <div className="rounded-2xl" style={{ background: '#F2F2F7' }} />
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="rounded-2xl" style={{ background: '#F2F2F7' }} />
             ))}
-          </>
+          </React.Fragment>
         ))}
       </div>
     </div>

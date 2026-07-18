@@ -40,12 +40,8 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
   if (logen.length === 0) {
     return (
       <div
-        className="flex items-center justify-center rounded-2xl"
-        style={{
-          height: 'calc(100vh - 160px)',
-          background: 'var(--color-surface)',
-          border: '1.5px solid var(--color-border)',
-        }}
+        className="flex items-center justify-center rounded-2xl py-24"
+        style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)' }}
       >
         <p style={{ color: 'var(--color-text-muted)' }}>Keine Logen gefunden.</p>
       </div>
@@ -56,7 +52,6 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
     <div
       className="rounded-2xl overflow-auto"
       style={{
-        height: 'calc(100vh - 160px)',
         background: 'var(--color-surface)',
         border: '1.5px solid var(--color-border)',
         boxShadow: '0 1px 8px rgba(99,102,241,0.06)',
@@ -66,11 +61,10 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
         style={{
           display: 'grid',
           gridTemplateColumns: `72px repeat(${logen.length}, minmax(150px, 1fr))`,
-          gridTemplateRows: `auto repeat(${zeitslots.length}, 1fr)`,
+          gridTemplateRows: `auto repeat(${zeitslots.length}, 280px)`,
           gap: '10px',
           padding: '14px',
           minWidth: `${72 + logen.length * 150 + 28}px`,
-          height: '100%',
         }}
       >
         {/* Ecke */}

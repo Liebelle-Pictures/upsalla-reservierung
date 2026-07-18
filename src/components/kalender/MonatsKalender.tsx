@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useRef } from 'react'
 
 interface TagReservierungen {
   datum: string
@@ -26,6 +27,30 @@ export function MonatsKalender({ jahr, monat, reservierungen }: Props) {
   const router = useRouter()
   const heute = new Date().toISOString().slice(0, 10)
 
+  // Monat-Navigation per Swipe
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+
+  const navigiereMonat = (delta: number) => {
+    let neuerMonat = monat + delta
+    let neuesJahr = jahr
+    if (neuerMonat > 12) { neuerMonat = 1; neuesJahr++ }
+    if (neuerMonat < 1)  { neuerMonat = 12; neuesJahr-- }
+    router.push(`/kalender?jahr=${neuesJahr}&monat=${neuerMonat}`)
+  }
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const dx = touchStartX.current - e.changedTouches[0].clientX
+    const dy = Math.abs(touchStartY.current - e.changedTouches[0].clientY)
+    // Nur horizontale Wischgesten auslösen (nicht scrollen)
+    if (Math.abs(dx) > 70 && dy < 60) navigiereMonat(dx > 0 ? 1 : -1)
+  }
+
   const ersterTag = new Date(jahr, monat - 1, 1)
   const letzterTag = new Date(jahr, monat, 0)
   const startOffset = (ersterTag.getDay() + 6) % 7
@@ -49,13 +74,21 @@ export function MonatsKalender({ jahr, monat, reservierungen }: Props) {
   const formatDatum = (tag: number) =>
     `${jahr}-${String(monat).padStart(2, '0')}-${String(tag).padStart(2, '0')}`
 
+  const numWeeks = tage.length / 7
+
   return (
     <div
       className="rounded-2xl p-5"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
       style={{
         background: 'var(--color-surface)',
         border: '1.5px solid var(--color-border)',
         boxShadow: '0 1px 8px rgba(99,102,241,0.05)',
+        minHeight: 'calc(100vh - 180px)',
+        display: 'flex',
+        flexDirection: 'column',
+        touchAction: 'pan-y',
       }}
     >
       {/* Wochentag-Header */}
@@ -67,10 +100,18 @@ export function MonatsKalender({ jahr, monat, reservierungen }: Props) {
         ))}
       </div>
 
-      {/* Tage */}
-      <div className="grid grid-cols-7 gap-1.5">
+      {/* Tage — expandiert vertikal gleichmäßig */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gridTemplateRows: `repeat(${numWeeks}, 1fr)`,
+          gap: '6px',
+          flex: 1,
+        }}
+      >
         {tage.map((tag, idx) => {
-          if (!tag) return <div key={idx} />
+          if (!tag) return <div key={idx} style={{ height: '100%' }} />
 
           const datum = formatDatum(tag)
           const istHeute = datum === heute
@@ -82,8 +123,10 @@ export function MonatsKalender({ jahr, monat, reservierungen }: Props) {
             <button
               key={datum}
               onClick={() => router.push(`/?datum=${datum}`)}
-              className="min-h-[90px] rounded-xl p-2.5 flex flex-col items-center gap-2 w-full"
+              className="rounded-xl p-2.5 flex flex-col items-center gap-2 w-full"
               style={{
+                height: '100%',
+                minHeight: '100px',
                 background: istHeute
                   ? 'var(--color-primary)'
                   : hatReservierungen

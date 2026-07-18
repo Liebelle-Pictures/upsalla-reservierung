@@ -3,7 +3,7 @@ import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
-import { istWochenende } from '@/lib/utils/zeitslots'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 
@@ -43,19 +43,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ fehler: 'Ungültiges JSON' }, { status: 400 })
   }
 
-  const { datum, loge_id: loge_id_raw, loge_name, zeitslot, typ, kinder_anzahl, vorname, nachname, telefon, email, notizen } = body as {
+  const { datum, loge_id: loge_id_raw, loge_name, zeitslot, typ, kinder_anzahl, erwachsene_anzahl, vorname, nachname, telefon, email, notizen } = body as {
     datum: string
     loge_id?: string
     loge_name?: string
     zeitslot: number
     typ: string
     kinder_anzahl: number
+    erwachsene_anzahl?: number
     vorname: string
     nachname: string
     telefon: string
     email?: string
     notizen?: string
   }
+  const erwachsene = Number(erwachsene_anzahl ?? 0)
 
   if (!datum || !zeitslot || !typ || !kinder_anzahl || !vorname || !nachname || !telefon) {
     return NextResponse.json({ hinweis: `Noch fehlende Angaben: ${[!datum && 'datum', !zeitslot && 'zeitslot', !typ && 'typ', !kinder_anzahl && 'kinder_anzahl', !vorname && 'vorname', !nachname && 'nachname', !telefon && 'telefon'].filter(Boolean).join(', ')}. Bitte beim Kunden erfragen.` })
@@ -85,8 +87,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: 'Loge nicht angegeben. Bitte Loge vom Kunden erfragen.' })
   }
 
-  const weekend = istWochenende(new Date(datumKorrigiert + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinder_anzahl, weekend)
+  const weekend = await istPreisteuerterTag(new Date(datumKorrigiert + 'T00:00:00'))
+  const gesamtbetrag = berechneGesamtbetrag(kinder_anzahl, weekend, erwachsene)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = weekend ? 27.0 : 23.0
 
@@ -133,7 +135,7 @@ export async function POST(request: NextRequest) {
     datum: datumKorrigiert,
     zeitslot,
     kinder_anzahl,
-    erwachsene_anzahl: 0,
+    erwachsene_anzahl: erwachsene,
     paket_preis_pro_kind: paketPreisProKind,
     gesamtbetrag,
     anzahlung_betrag: anzahlungBetrag,

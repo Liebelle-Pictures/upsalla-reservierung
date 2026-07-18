@@ -1,23 +1,22 @@
 // Preise laut KONZEPT.md
-const PREISE = {
-  wochentag: { proKind: 23.0, zusatzKind: 6.5, mindestKinder: 6 },
-  wochenende: { proKind: 27.0, zusatzKind: 7.5, mindestKinder: 6 },
-} as const
+const FREIE_BEGLEITPERSONEN = 3
 
 export function berechneGesamtbetrag(
   kinderAnzahl: number,
   istWochenende: boolean,
+  erwachseneAnzahl = 0,
 ): number {
-  const tarif = istWochenende ? PREISE.wochenende : PREISE.wochentag
-  const basisKinder = Math.min(kinderAnzahl, tarif.mindestKinder)
-  const zusatzKinder = Math.max(0, kinderAnzahl - tarif.mindestKinder)
-
-  return (
-    basisKinder * tarif.proKind +
-    zusatzKinder * tarif.zusatzKind
-  )
+  const preisProPerson = istWochenende ? 27.0 : 23.0
+  const kindPreis = kinderAnzahl * preisProPerson
+  const zahlendErwachsene = Math.max(0, erwachseneAnzahl - FREIE_BEGLEITPERSONEN)
+  const erwachsenePreis = zahlendErwachsene * preisProPerson
+  return kindPreis + erwachsenePreis
 }
 
 export function berechneAnzahlung(gesamtbetrag: number): number {
   return Math.round(gesamtbetrag * 0.2 * 100) / 100
+}
+
+export function berechneZahlendErwachsene(erwachseneAnzahl: number): number {
+  return Math.max(0, erwachseneAnzahl - FREIE_BEGLEITPERSONEN)
 }

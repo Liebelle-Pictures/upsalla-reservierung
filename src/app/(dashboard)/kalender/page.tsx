@@ -16,9 +16,9 @@ export default async function KalenderPage({ searchParams }: Props) {
   const reservierungen = await getReservierungenFuerMonat(jahr, monat, WUPPERTAL_STANDORT_ID)
 
   return (
-    <div className="space-y-4">
+    <>
       <MonatsNavigator jahr={jahr} monat={monat} />
       <MonatsKalender jahr={jahr} monat={monat} reservierungen={reservierungen} />
-    </div>
+    </>
   )
 }

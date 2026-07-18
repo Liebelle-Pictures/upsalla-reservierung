@@ -1,5 +1,8 @@
 import { stripe } from '@/lib/stripe/client'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { sendeSMS } from '@/lib/twilio/client'
+import { sendeEmail } from '@/lib/resend/client'
+import { buchungsbestaetigungHtml } from '@/lib/resend/templates'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,18 +28,29 @@ export default async function ZahlungErfolgPage({ searchParams }: Props) {
     if (session.payment_status === 'paid' && reservierungId) {
       const { data: res } = await supabaseAdmin
         .from('reservierungen')
-        .select('datum, zeitslot, status, kunden(vorname)')
+        .select('datum, zeitslot, status, anzahlung_betrag, gesamtbetrag, kinder_anzahl, erwachsene_anzahl, notizen, kunden(vorname, nachname, telefon, email), logen(name)')
         .eq('id', reservierungId)
         .single()
 
       if (res) {
         const kundeRaw = res.kunden
-        const kunde = (Array.isArray(kundeRaw) ? kundeRaw[0] : kundeRaw) as { vorname: string } | null
+        const kunde = (Array.isArray(kundeRaw) ? kundeRaw[0] : kundeRaw) as { vorname: string; nachname: string; telefon: string | null; email: string | null } | null
+        const logeRaw = res.logen
+        const loge = (Array.isArray(logeRaw) ? logeRaw[0] : logeRaw) as { name: string } | null
         vorname = kunde?.vorname ?? ''
 
         datumAnzeige = new Date(res.datum + 'T00:00:00').toLocaleDateString('de-DE', {
           weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
         })
+        const zeitslotText = res.zeitslot === 1 ? 'Slot 1 — 10:30–14:30 Uhr' : 'Slot 2 — 15:00–19:00 Uhr'
+        const zeitAnzeige = res.zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
+
+        // E-Mail aus Stripe Checkout übernehmen (Kunde hat sie beim Bezahlen eingegeben)
+        const stripeEmail = session.customer_details?.email
+        if (stripeEmail && kunde) {
+          await supabaseAdmin.from('kunden').update({ email: stripeEmail }).eq('id', (await supabaseAdmin.from('reservierungen').select('kunde_id').eq('id', reservierungId).single()).data?.kunde_id)
+        }
+        const kundenEmail = stripeEmail ?? kunde?.email
 
         if (res.status !== 'BESTAETIGT_BEZAHLT') {
           await supabaseAdmin
@@ -47,6 +61,42 @@ export default async function ZahlungErfolgPage({ searchParams }: Props) {
               aktualisiert_am: new Date().toISOString(),
             })
             .eq('id', reservierungId)
+
+          // Bestätigungs-SMS
+          if (kunde?.telefon) {
+            try {
+              await sendeSMS(
+                kunde.telefon,
+                `Hallo ${vorname}! Eure Anzahlung von ${Number(res.anzahlung_betrag).toFixed(2)} Euro fuer den Geburtstag am ${datumAnzeige} (${zeitAnzeige} Uhr) ist eingegangen. Euer Termin ist jetzt fest gebucht! Bis bald im Upsalla Kinderpark.`,
+              )
+            } catch (e) {
+              console.error('[Twilio] SMS-Fehler nach Zahlung:', e)
+            }
+          }
+
+          // Bestätigungs-E-Mail
+          if (kundenEmail) {
+            try {
+              await sendeEmail({
+                an: kundenEmail,
+                betreff: `Buchungsbestätigung – ${datumAnzeige} · Upsalla Kinderpark Wuppertal`,
+                html: buchungsbestaetigungHtml({
+                  vorname,
+                  nachname: kunde?.nachname ?? '',
+                  datum: datumAnzeige,
+                  zeitslot: zeitslotText,
+                  logeName: loge?.name ?? 'Loge',
+                  kinderAnzahl: res.kinder_anzahl ?? 0,
+                  erwachseneAnzahl: res.erwachsene_anzahl ?? 0,
+                  gesamtbetrag: Number(res.gesamtbetrag),
+                  anzahlungBetrag: Number(res.anzahlung_betrag),
+                  stripePaymentLink: null,
+                }),
+              })
+            } catch (e) {
+              console.error('[Resend] E-Mail-Fehler nach Zahlung:', e)
+            }
+          }
         }
 
         status = 'erfolg'

@@ -3,7 +3,7 @@ import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
-import { istWochenende } from '@/lib/utils/zeitslots'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,8 +32,8 @@ export async function PATCH(
 
   const body = await request.json() as { kinder_anzahl?: number; notizen?: string }
   const kinderAnzahl = body.kinder_anzahl ?? reservierung.kinder_anzahl
-  const weekend = istWochenende(new Date(reservierung.datum + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend)
+  const weekend = await istPreisteuerterTag(new Date(reservierung.datum + 'T00:00:00'))
+  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend, 0)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
 
   await supabaseAdmin

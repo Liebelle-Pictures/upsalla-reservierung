@@ -136,6 +136,103 @@ export async function getReservierungenFuerMonat(
   return (data ?? []) as { datum: string; status: string }[]
 }
 
+export interface LenaStatistik {
+  reservierungenGesamt: number
+  anzahlungErhalten: number
+  conversionRate: number
+  gesicherterUmsatz: number       // Gesamtbetrag aller bezahlten Lena-Reservierungen
+  einsparungPotenzial: number     // Gesamtbetrag aller Lena-Reservierungen (auch ausstehend)
+  stornierungen: number
+}
+
+export async function getLenaStatistik(
+  zeitraum: 'heute' | 'woche' | 'monat',
+  standortId: string,
+): Promise<LenaStatistik> {
+  const jetzt = new Date()
+
+  let von: string
+  if (zeitraum === 'heute') {
+    von = jetzt.toISOString().slice(0, 10) + 'T00:00:00.000Z'
+  } else if (zeitraum === 'woche') {
+    const wochenstart = new Date(jetzt)
+    const tag = wochenstart.getDay()
+    const diff = tag === 0 ? -6 : 1 - tag // Montag = Wochenstart
+    wochenstart.setDate(wochenstart.getDate() + diff)
+    wochenstart.setHours(0, 0, 0, 0)
+    von = wochenstart.toISOString()
+  } else {
+    von = `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-01T00:00:00.000Z`
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabaseAdmin as any)
+    .from('reservierungen')
+    .select('status, gesamtbetrag')
+    .eq('standort_id', standortId)
+    .is('erstellt_von', null)   // Lena setzt keinen Supabase-User
+    .gte('erstellt_am', von)
+
+  const alle = (data ?? []) as { status: string; gesamtbetrag: number }[]
+  const aktive = alle.filter(r => r.status !== 'STORNIERT')
+  const bezahlt = alle.filter(r => r.status === 'BESTAETIGT_BEZAHLT')
+  const storniert = alle.filter(r => r.status === 'STORNIERT')
+
+  return {
+    reservierungenGesamt: aktive.length,
+    anzahlungErhalten: bezahlt.length,
+    conversionRate: aktive.length > 0 ? (bezahlt.length / aktive.length) * 100 : 0,
+    gesicherterUmsatz: bezahlt.reduce((s, r) => s + Number(r.gesamtbetrag), 0),
+    einsparungPotenzial: aktive.reduce((s, r) => s + Number(r.gesamtbetrag), 0),
+    stornierungen: storniert.length,
+  }
+}
+
+export interface AnrufeStatistik {
+  gesamt: number
+  erfolgreich: number      // Anruf mit Reservierung
+  voicemail: number
+  conversionRate: number
+  durchschnittsDauer: number  // Sekunden
+}
+
+export async function getAnrufeStatistik(
+  zeitraum: 'heute' | 'woche' | 'monat',
+): Promise<AnrufeStatistik> {
+  const jetzt = new Date()
+  let von: string
+
+  if (zeitraum === 'heute') {
+    von = jetzt.toISOString().slice(0, 10)
+  } else if (zeitraum === 'woche') {
+    const d = new Date(jetzt)
+    const diff = d.getDay() === 0 ? -6 : 1 - d.getDay()
+    d.setDate(d.getDate() + diff)
+    von = d.toISOString().slice(0, 10)
+  } else {
+    von = `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-01`
+  }
+
+  const { data } = await supabaseAdmin
+    .from('lena_anrufe')
+    .select('reservierung_erstellt, in_voicemail, dauer_sekunden')
+    .gte('datum', von)
+
+  const alle = data ?? []
+  const mitReservierung = alle.filter(a => a.reservierung_erstellt)
+  const voicemail = alle.filter(a => a.in_voicemail)
+  const gespraeche = alle.filter(a => !a.in_voicemail)
+  const gesamtDauer = gespraeche.reduce((s, a) => s + (a.dauer_sekunden ?? 0), 0)
+
+  return {
+    gesamt: alle.length,
+    erfolgreich: mitReservierung.length,
+    voicemail: voicemail.length,
+    conversionRate: gespraeche.length > 0 ? (mitReservierung.length / gespraeche.length) * 100 : 0,
+    durchschnittsDauer: gespraeche.length > 0 ? Math.round(gesamtDauer / gespraeche.length) : 0,
+  }
+}
+
 export async function getReservierungenFuerTag(
   datum: string,
   standortId: string,

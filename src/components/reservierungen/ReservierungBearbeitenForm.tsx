@@ -2,8 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { reservierungAktualisieren, type BearbeitenState } from '@/app/actions/reservierungen'
-import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
-import { istWochenende } from '@/lib/utils/zeitslots'
+import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene } from '@/lib/utils/preise'
 import Link from 'next/link'
 
 const TYP_OPTIONEN = [
@@ -26,18 +25,22 @@ interface Props {
     logen: { name: string } | null
     kunden: { id: string; vorname: string; nachname: string; telefon: string; email: string | null } | null
   }
+  istTeuerterTag: boolean
 }
 
-export function ReservierungBearbeitenForm({ reservierung: r }: Props) {
+export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: Props) {
   const [state, action, pending] = useActionState<BearbeitenState, FormData>(
     reservierungAktualisieren,
     undefined,
   )
-  const [kinderAnzahl, setKinderAnzahl] = useState(r.kinder_anzahl)
+  const [kinderAnzahl, setKinderAnzahl]         = useState(r.kinder_anzahl)
+  const [erwachseneAnzahl, setErwachseneAnzahl] = useState(r.erwachsene_anzahl)
 
-  const weekend = istWochenende(new Date(r.datum + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend)
-  const anzahlung = berechneAnzahlung(gesamtbetrag)
+  const weekend           = istTeuerterTag
+  const preisProPerson    = weekend ? 27.0 : 23.0
+  const gesamtbetrag      = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
+  const anzahlung         = berechneAnzahlung(gesamtbetrag)
+  const zahlendErwachsene = berechneZahlendErwachsene(erwachseneAnzahl)
 
   const datumAnzeige = new Date(r.datum + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
@@ -131,28 +134,43 @@ export function ReservierungBearbeitenForm({ reservierung: r }: Props) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Anzahl Erwachsene</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Begleitpersonen</label>
           <input
             name="erwachsene_anzahl"
             type="number"
             min={0}
-            defaultValue={r.erwachsene_anzahl}
+            value={erwachseneAnzahl}
+            onChange={(e) => setErwachseneAnzahl(Number(e.target.value))}
             className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
 
       {/* Preisberechnung */}
-      <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-gray-600">Paket ({weekend ? 'Wochenende' : 'Wochentag'})</span>
-          <span>{weekend ? '27,00 €' : '23,00 €'} / Kind</span>
+      <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border)' }} className="space-y-2 text-sm">
+        <div className="flex justify-between text-gray-600">
+          <span>{kinderAnzahl} Kinder × {preisProPerson.toFixed(2)} €</span>
+          <span>{(kinderAnzahl * preisProPerson).toFixed(2)} €</span>
         </div>
-        <div className="flex justify-between font-semibold">
+        {erwachseneAnzahl > 0 && (
+          <>
+            <div className="flex justify-between text-gray-500">
+              <span>{Math.min(erwachseneAnzahl, 3)} Begleitperson{Math.min(erwachseneAnzahl, 3) !== 1 ? 'en' : ''} gratis</span>
+              <span>0,00 €</span>
+            </div>
+            {zahlendErwachsene > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>{zahlendErwachsene} Begleitperson{zahlendErwachsene !== 1 ? 'en' : ''} × {preisProPerson.toFixed(2)} €</span>
+                <span>{(zahlendErwachsene * preisProPerson).toFixed(2)} €</span>
+              </div>
+            )}
+          </>
+        )}
+        <div className="flex justify-between font-bold border-t border-gray-200 pt-2" style={{ color: 'var(--color-text)' }}>
           <span>Gesamtbetrag</span>
           <span>{gesamtbetrag.toFixed(2)} €</span>
         </div>
-        <div className="flex justify-between text-blue-700 font-semibold border-t border-gray-200 pt-2">
+        <div className="flex justify-between font-bold" style={{ color: 'var(--color-primary)' }}>
           <span>Anzahlung (20%)</span>
           <span>{anzahlung.toFixed(2)} €</span>
         </div>

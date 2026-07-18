@@ -13,10 +13,11 @@ const SLOTS_WOCHENENDE: ZeitslotInfo[] = [
   { nummer: 2, start: '15:00', ende: '19:00' },
 ]
 
-export function getVerfuegbareSlots(datum: Date): ZeitslotInfo[] {
-  const tag = datum.getDay() // 0=So, 6=Sa
-  const istWochenende = tag === 0 || tag === 6
-  return istWochenende ? SLOTS_WOCHENENDE : SLOTS_WOCHENTAG
+// istTeuerterTag: optionaler Override (inkl. Feiertage/Ferien); ohne Argument → nur Wochenende
+export function getVerfuegbareSlots(datum: Date, istTeuerterTag?: boolean): ZeitslotInfo[] {
+  const tag = datum.getDay()
+  const premium = istTeuerterTag ?? (tag === 0 || tag === 6)
+  return premium ? SLOTS_WOCHENENDE : SLOTS_WOCHENTAG
 }
 
 export function istWochenende(datum: Date): boolean {

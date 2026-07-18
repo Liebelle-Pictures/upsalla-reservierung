@@ -2,8 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { reservierungErstellen, type ReservierungFormState } from '@/app/actions/reservierungen'
-import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
-import { istWochenende } from '@/lib/utils/zeitslots'
+import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene } from '@/lib/utils/preise'
 import type { Loge } from '@/types/loge'
 import type { ZeitslotInfo } from '@/lib/utils/zeitslots'
 
@@ -11,31 +10,36 @@ interface Props {
   datum: string
   loge: Loge
   slot: ZeitslotInfo
+  istTeuerterTag: boolean
 }
 
 const TYP_OPTIONEN = [
-  { wert: 'GEBURTSTAG', label: 'Geburtstag' },
+  { wert: 'GEBURTSTAG',          label: 'Geburtstag' },
   { wert: 'BABYWELT_GEBURTSTAG', label: 'Babywelt Geburtstag' },
-  { wert: 'GRUPPE', label: 'Gruppe (Kita/Schule)' },
-  { wert: 'WILD_SIDE', label: 'Wild Side (Ü18)' },
-  { wert: 'INTERN', label: 'Intern gesperrt' },
+  { wert: 'GRUPPE',              label: 'Gruppe (Kita/Schule)' },
+  { wert: 'WILD_SIDE',           label: 'Wild Side (Ü18)' },
+  { wert: 'INTERN',              label: 'Intern gesperrt' },
 ]
 
-export function ReservierungFormClient({ datum, loge, slot }: Props) {
+export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Props) {
   const [state, action, pending] = useActionState<ReservierungFormState, FormData>(
     reservierungErstellen,
     undefined,
   )
-  const [kinderAnzahl, setKinderAnzahl] = useState(6)
-  const weekend = istWochenende(new Date(datum + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend)
-  const anzahlung = berechneAnzahlung(gesamtbetrag)
+  const [kinderAnzahl, setKinderAnzahl]       = useState(6)
+  const [erwachseneAnzahl, setErwachseneAnzahl] = useState(2)
+
+  const weekend           = istTeuerterTag
+  const preisProPerson    = weekend ? 27.0 : 23.0
+  const gesamtbetrag      = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
+  const anzahlung         = berechneAnzahlung(gesamtbetrag)
+  const zahlendErwachsene = berechneZahlendErwachsene(erwachseneAnzahl)
 
   return (
     <form action={action} className="space-y-6 max-w-xl">
       {/* Versteckte Felder */}
-      <input type="hidden" name="datum" value={datum} />
-      <input type="hidden" name="loge_id" value={loge.id} />
+      <input type="hidden" name="datum"    value={datum} />
+      <input type="hidden" name="loge_id"  value={loge.id} />
       <input type="hidden" name="zeitslot" value={slot.nummer} />
 
       {/* Info-Box */}
@@ -89,7 +93,7 @@ export function ReservierungFormClient({ datum, loge, slot }: Props) {
           <input
             name="kinder_anzahl"
             type="number"
-            min={1}
+            min={6}
             max={20}
             value={kinderAnzahl}
             onChange={(e) => setKinderAnzahl(Number(e.target.value))}
@@ -98,22 +102,43 @@ export function ReservierungFormClient({ datum, loge, slot }: Props) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Anzahl Erwachsene</label>
-          <input name="erwachsene_anzahl" type="number" min={0} defaultValue={2} className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Begleitpersonen</label>
+          <input
+            name="erwachsene_anzahl"
+            type="number"
+            min={0}
+            value={erwachseneAnzahl}
+            onChange={(e) => setErwachseneAnzahl(Number(e.target.value))}
+            className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
       </div>
 
       {/* Preisberechnung */}
-      <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-gray-600">Paket ({weekend ? 'Wochenende' : 'Wochentag'})</span>
-          <span>{weekend ? '27,00 €' : '23,00 €'} / Kind</span>
+      <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border)' }} className="space-y-2 text-sm">
+        <div className="flex justify-between text-gray-600">
+          <span>{kinderAnzahl} Kinder × {preisProPerson.toFixed(2)} €</span>
+          <span>{(kinderAnzahl * preisProPerson).toFixed(2)} €</span>
         </div>
-        <div className="flex justify-between font-semibold">
+        {erwachseneAnzahl > 0 && (
+          <>
+            <div className="flex justify-between text-gray-500">
+              <span>{Math.min(erwachseneAnzahl, 3)} Begleitperson{Math.min(erwachseneAnzahl, 3) !== 1 ? 'en' : ''} gratis</span>
+              <span>0,00 €</span>
+            </div>
+            {zahlendErwachsene > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>{zahlendErwachsene} Begleitperson{zahlendErwachsene !== 1 ? 'en' : ''} × {preisProPerson.toFixed(2)} €</span>
+                <span>{(zahlendErwachsene * preisProPerson).toFixed(2)} €</span>
+              </div>
+            )}
+          </>
+        )}
+        <div className="flex justify-between font-bold border-t border-gray-200 pt-2" style={{ color: 'var(--color-text)' }}>
           <span>Gesamtbetrag</span>
           <span>{gesamtbetrag.toFixed(2)} €</span>
         </div>
-        <div className="flex justify-between text-blue-700 font-semibold border-t border-gray-200 pt-2">
+        <div className="flex justify-between font-bold" style={{ color: 'var(--color-primary)' }}>
           <span>Anzahlung (20%)</span>
           <span>{anzahlung.toFixed(2)} €</span>
         </div>
@@ -133,23 +158,22 @@ export function ReservierungFormClient({ datum, loge, slot }: Props) {
         </span>
       </label>
 
-      {/* Fehler */}
       {state?.fehler && (
         <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">{state.fehler}</p>
       )}
 
-      {/* Buttons */}
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
           disabled={pending}
-          className="flex-1 h-12 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          style={{ background: 'var(--color-primary)', color: '#fff', height: '48px', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: pending ? 'not-allowed' : 'pointer', opacity: pending ? 0.6 : 1 }}
+          className="flex-1"
         >
           {pending ? 'Speichern…' : 'Reservierung speichern'}
         </button>
         <a
           href="/"
-          className="h-12 px-6 flex items-center justify-center rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium"
+          style={{ height: '48px', padding: '0 24px', display: 'flex', alignItems: 'center', borderRadius: '10px', border: '1.5px solid var(--color-border)', color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
         >
           Abbrechen
         </a>

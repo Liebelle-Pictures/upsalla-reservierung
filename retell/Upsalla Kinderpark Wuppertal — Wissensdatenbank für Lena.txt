@@ -1,0 +1,83 @@
+# Upsalla Kinderpark Wuppertal — Wissensdatenbank für Lena
+
+## Kontakt & Adresse
+- Adresse: Porschestraße 22, 42279 Wuppertal
+- Telefon: 0202 2623339
+- Website: upsalla-kinderpark.de
+- Fläche: über 3.000 m² Spielfläche
+
+## Öffnungszeiten
+- Montag bis Freitag: 14:00 – 19:00 Uhr
+- Samstag und Sonntag: 10:00 – 19:00 Uhr
+- NRW Schulferien und Feiertage: 10:00 – 19:00 Uhr
+
+## Verfügbare Logen (Themenräume)
+1. Paw Patrol Jungs
+2. Paw Patrol Mädchen
+3. Marvel Spiderman
+4. Anna & Elsa
+5. Safari
+6. Einhorn Schloss
+7. Märchen Regenbogen
+Babywelt-Logen (separate Buchung): Junge + Märchen
+
+## Zeitslots
+Wochentag (Mo–Fr):
+- Slot 1: 15:00 – 19:00 Uhr
+
+Wochenende / Schulferien / Feiertage (Sa, So):
+- Slot 1: 10:30 – 14:30 Uhr
+- Slot 2: 15:00 – 19:00 Uhr
+
+## Preise Kindergeburtstag
+Wochentag (Mo–Fr):
+- 23,00 Euro pro Kind (alle Kinder × 23,00 €)
+
+Wochenende / Schulferien / Feiertage:
+- 27,00 Euro pro Kind (alle Kinder × 27,00 €)
+
+Begleitpersonen (Erwachsene):
+- Erste 3 Begleitpersonen: gratis
+- Ab der 4. Begleitperson: gleicher Preis wie Kinder (23 € oder 27 € je nach Tag)
+
+Anzahlung: 20 % des Gesamtbetrags
+
+Mindestanzahl: 6 Kinder
+Maximum: 20 Kinder pro Loge
+
+Logenkapazität:
+- 6 bis 10 Kinder = 1 Tisch (halbe Loge)
+- 11 bis 20 Kinder = 2 Tische (ganze Loge)
+
+## Anzahlung
+- 20% des Gesamtbetrags
+- Zahlung per Stripe-Link (wird per SMS zugeschickt)
+- Reservierung wird erst nach Zahlung fix bestätigt
+
+## Stornierungsbedingungen
+- 7 oder mehr Tage vor dem Termin: kostenlose Stornierung, Anzahlung wird vollständig erstattet
+- Weniger als 7 Tage vor dem Termin: Stornierung möglich, Anzahlung verfällt
+- Krankheit mit ärztlichem Attest: Anzahlung wird immer erstattet
+- Attest kann digital eingereicht oder vor Ort gezeigt werden
+
+## Angebote & Produkte
+Tageskarte: Spontan vorbeikommen, keine Reservierung nötig
+Familienkarte: Für die ganze Familie
+Jahreskarte: Ein Jahr voller Abenteuer
+Babywelt: Ab 6 Monaten, sicher gestaltet
+Kindergeburtstage: Ab 6 Kindern, mit Deko, Menüwahl und Überraschungen
+Gruppenangebote: Für Kitas, Schulen und Vereine — Gruppenpreise auf Anfrage
+The Wild Side: Ü18 Events für Erwachsene
+Gastronomie: Kinderfreundliche Speisen vor Ort
+
+## Wichtige Hausregeln
+- Rutschfeste Socken sind Pflicht (vor Ort erhältlich)
+- Eigene Speisen und Getränke sind NICHT erlaubt
+- Kostenlose Parkplätze direkt am Park
+- Kinderwagen bitte im Eingangsbereich lassen
+
+## Reservierungstypen
+- GEBURTSTAG: Hauptprodukt, Anzahlung Pflicht
+- BABYWELT_GEBURTSTAG: Spezielle Babywelt-Logen, gleiche Preise
+- GRUPPE: Kitas, Schulen, Vereine — keine Anzahlung, Gruppenpreise
+- WILD_SIDE: Ü18 Events

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getVerfuegbareSlots } from '@/lib/utils/zeitslots'
+import { istPreisteuerterTag, getPreisTypLabel } from '@/lib/utils/feiertage'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
@@ -38,6 +39,14 @@ async function handleVerfuegbarkeit(datumRaw: string) {
     return NextResponse.json({ hinweis: 'Datum fehlt. Bitte zuerst das Datum vom Kunden erfragen, dann erneut aufrufen.' })
   }
 
+  const datumObj = new Date(datum + 'T00:00:00')
+
+  // Preistyp und verfügbare Slots ermitteln (inkl. Feiertage/Ferien)
+  const [teuerterTag, preisTyp] = await Promise.all([
+    istPreisteuerterTag(datumObj),
+    getPreisTypLabel(datumObj),
+  ])
+
   const { data: logen } = await supabaseAdmin
     .from('logen')
     .select('id, name, ist_babywelt')
@@ -56,7 +65,7 @@ async function handleVerfuegbarkeit(datumRaw: string) {
     (belegt ?? []).map((r: { loge_id: string; zeitslot: number }) => `${r.loge_id}-${r.zeitslot}`)
   )
 
-  const slots = getVerfuegbareSlots(new Date(datum + 'T00:00:00'))
+  const slots = getVerfuegbareSlots(datumObj, teuerterTag)
 
   const verfuegbar = (logen ?? []).flatMap((loge: { id: string; name: string; ist_babywelt: boolean }) =>
     slots
@@ -70,7 +79,12 @@ async function handleVerfuegbarkeit(datumRaw: string) {
       }))
   )
 
-  return NextResponse.json({ datum, verfuegbar })
+  return NextResponse.json({
+    datum,
+    preisTyp,
+    preisProPerson: teuerterTag ? 27.0 : 23.0,
+    verfuegbar,
+  })
 }
 
 export async function GET(request: NextRequest) {
