@@ -92,10 +92,19 @@ export function DatumNavigator({ datum }: Props) {
           <button
             onClick={() => setPickerOffen(v => !v)}
             className="flex items-center gap-1 mt-1"
-            style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{
+              fontSize: '0.85rem',
+              color: 'var(--color-primary)',
+              fontWeight: 600,
+              background: '#EEF2FF',
+              border: '1px solid #C7D2FE',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              padding: '4px 10px',
+            }}
           >
-            {datumKurz}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+            {monatJahr}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </button>
