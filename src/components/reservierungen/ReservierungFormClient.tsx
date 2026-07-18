@@ -13,11 +13,15 @@ interface Props {
   istTeuerterTag: boolean
 }
 
-const TYP_OPTIONEN = [
-  { wert: 'GEBURTSTAG',          label: 'Geburtstag' },
+const TYP_OPTIONEN_NORMAL = [
+  { wert: 'GEBURTSTAG', label: 'Geburtstag' },
+  { wert: 'GRUPPE',     label: 'Gruppe (Kita/Schule)' },
+  { wert: 'WILD_SIDE',  label: 'Wild Side (Ü18)' },
+  { wert: 'INTERN',     label: 'Intern gesperrt' },
+]
+
+const TYP_OPTIONEN_BABYWELT = [
   { wert: 'BABYWELT_GEBURTSTAG', label: 'Babywelt Geburtstag' },
-  { wert: 'GRUPPE',              label: 'Gruppe (Kita/Schule)' },
-  { wert: 'WILD_SIDE',           label: 'Wild Side (Ü18)' },
   { wert: 'INTERN',              label: 'Intern gesperrt' },
 ]
 
@@ -28,6 +32,10 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
   )
   const [kinderAnzahl, setKinderAnzahl]       = useState(6)
   const [erwachseneAnzahl, setErwachseneAnzahl] = useState(2)
+
+  const istBabywelt = loge.name.toLowerCase().includes('babywelt')
+  const typOptionen = istBabywelt ? TYP_OPTIONEN_BABYWELT : TYP_OPTIONEN_NORMAL
+  const defaultTyp  = istBabywelt ? 'BABYWELT_GEBURTSTAG' : 'GEBURTSTAG'
 
   const weekend           = istTeuerterTag
   const preisProPerson    = weekend ? 27.0 : 23.0
@@ -52,8 +60,8 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
       {/* Typ */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Art der Reservierung *</label>
-        <select name="typ" defaultValue="GEBURTSTAG" className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
-          {TYP_OPTIONEN.map((o) => (
+        <select name="typ" defaultValue={defaultTyp} className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
+          {typOptionen.map((o) => (
             <option key={o.wert} value={o.wert}>{o.label}</option>
           ))}
         </select>
