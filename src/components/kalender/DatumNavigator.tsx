@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 
 interface Props {
   datum: string
+  basePath?: string
 }
 
 function formatAnzeige(datum: string): { wochentag: string; datumKurz: string; monatJahr: string } {
@@ -31,7 +32,7 @@ function ersterDesMonats(jahr: number, monat: number): string {
   return `${jahr}-${String(monat + 1).padStart(2, '0')}-01`
 }
 
-export function DatumNavigator({ datum }: Props) {
+export function DatumNavigator({ datum, basePath = '/' }: Props) {
   const router = useRouter()
   const [heute, setHeute] = useState(datum)
   const [pickerOffen, setPickerOffen] = useState(false)
@@ -51,7 +52,7 @@ export function DatumNavigator({ datum }: Props) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [pickerOffen])
 
-  const navigiere = (z: string) => { router.push(`/?datum=${z}`); setPickerOffen(false) }
+  const navigiere = (z: string) => { router.push(`${basePath}?datum=${z}`); setPickerOffen(false) }
   const istHeute = datum === heute
   const { wochentag, datumKurz, monatJahr } = formatAnzeige(datum)
 

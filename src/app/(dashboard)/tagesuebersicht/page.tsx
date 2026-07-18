@@ -23,7 +23,7 @@ export default async function TagesuebersichtPage({ searchParams }: Props) {
       {/* Navigation + Drucken — wird beim Drucken ausgeblendet */}
       <div className="flex items-center gap-4 print:hidden">
         <div className="flex-1">
-          <DatumNavigator datum={datum} />
+          <DatumNavigator datum={datum} basePath="/tagesuebersicht" />
         </div>
         <DruckenButton />
       </div>
