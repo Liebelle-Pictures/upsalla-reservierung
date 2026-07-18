@@ -1,17 +1,18 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface Props {
   datum: string
 }
 
-function formatAnzeige(datum: string): { wochentag: string; datumKurz: string } {
+function formatAnzeige(datum: string): { wochentag: string; datumKurz: string; monatJahr: string } {
   const d = new Date(datum + 'T00:00:00')
   return {
     wochentag: d.toLocaleDateString('de-DE', { weekday: 'long' }),
     datumKurz: d.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }),
+    monatJahr: d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }),
   }
 }
 
@@ -26,15 +27,50 @@ function heuteLokal(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function ersterDesMonats(jahr: number, monat: number): string {
+  return `${jahr}-${String(monat + 1).padStart(2, '0')}-01`
+}
+
 export function DatumNavigator({ datum }: Props) {
   const router = useRouter()
   const [heute, setHeute] = useState(datum)
+  const [pickerOffen, setPickerOffen] = useState(false)
+  const pickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setHeute(heuteLokal()) }, [])
 
-  const navigiere = (z: string) => router.push(`/?datum=${z}`)
+  // Klick außerhalb schließt den Picker
+  useEffect(() => {
+    if (!pickerOffen) return
+    function handleClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOffen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [pickerOffen])
+
+  const navigiere = (z: string) => { router.push(`/?datum=${z}`); setPickerOffen(false) }
   const istHeute = datum === heute
-  const { wochentag, datumKurz } = formatAnzeige(datum)
+  const { wochentag, datumKurz, monatJahr } = formatAnzeige(datum)
+
+  // 3 Monate zurück bis 18 Monate voraus
+  const aktuellesDatumObj = new Date(datum + 'T00:00:00')
+  const monatsListe: { jahr: number; monat: number; label: string }[] = []
+  const basis = new Date()
+  basis.setDate(1)
+  for (let i = -3; i <= 18; i++) {
+    const d = new Date(basis.getFullYear(), basis.getMonth() + i, 1)
+    monatsListe.push({
+      jahr: d.getFullYear(),
+      monat: d.getMonth(),
+      label: d.toLocaleDateString('de-DE', { month: 'short' }),
+    })
+  }
+
+  // Monate nach Jahr gruppieren
+  const jahre = [...new Set(monatsListe.map(m => m.jahr))]
 
   return (
     <div className="flex items-center justify-between mb-6">
@@ -50,9 +86,66 @@ export function DatumNavigator({ datum }: Props) {
             </span>
           )}
         </h1>
-        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 500 }}>
-          {datumKurz}
-        </p>
+
+        {/* Klickbares Monat/Jahr öffnet Schnellnavigation */}
+        <div className="relative" ref={pickerRef}>
+          <button
+            onClick={() => setPickerOffen(v => !v)}
+            className="flex items-center gap-1 mt-1"
+            style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            {datumKurz}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          {pickerOffen && (
+            <div
+              className="absolute z-50 mt-2 rounded-2xl shadow-xl p-4"
+              style={{
+                background: 'var(--color-surface)',
+                border: '1.5px solid var(--color-border)',
+                minWidth: '280px',
+                left: 0,
+                top: '100%',
+              }}
+            >
+              {jahre.map(jahr => (
+                <div key={jahr} className="mb-3 last:mb-0">
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', letterSpacing: '0.08em', marginBottom: '6px', textTransform: 'uppercase' }}>
+                    {jahr}
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {monatsListe
+                      .filter(m => m.jahr === jahr)
+                      .map(m => {
+                        const istAktuell = m.jahr === aktuellesDatumObj.getFullYear() && m.monat === aktuellesDatumObj.getMonth()
+                        return (
+                          <button
+                            key={`${m.jahr}-${m.monat}`}
+                            onClick={() => navigiere(ersterDesMonats(m.jahr, m.monat))}
+                            style={{
+                              height: '36px',
+                              borderRadius: '8px',
+                              fontSize: '0.8rem',
+                              fontWeight: istAktuell ? 700 : 500,
+                              background: istAktuell ? 'var(--color-primary)' : 'transparent',
+                              color: istAktuell ? '#fff' : 'var(--color-text)',
+                              border: istAktuell ? 'none' : '1px solid var(--color-border)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {m.label}
+                          </button>
+                        )
+                      })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
