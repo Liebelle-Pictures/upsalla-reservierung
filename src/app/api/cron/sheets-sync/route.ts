@@ -48,7 +48,13 @@ export async function GET(request: NextRequest) {
     }
   })
 
-  await sheetKompletSynchronisieren(zeilen)
+  try {
+    await sheetKompletSynchronisieren(zeilen)
+  } catch (err) {
+    console.error('[Sheets-Sync] Google Sheets Fehler:', err)
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ fehler: 'Google Sheets Fehler', details: msg }, { status: 500 })
+  }
 
   console.log(`[Sheets-Sync] ${zeilen.length} Kunden synchronisiert`)
   return NextResponse.json({ synchronisiert: zeilen.length })
