@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ synchronisiert: 0 })
   }
 
+  console.log(`[Sheets-Sync] ${kunden.length} Kunden aus DB geladen`)
+
   const zeilen = kunden.map(k => {
     // Letzte Reservierung finden
     const reservierungen = (k.reservierungen ?? []) as unknown as { datum: string; logen: { name: string } | null }[]
@@ -48,8 +50,12 @@ export async function GET(request: NextRequest) {
     }
   })
 
+  console.log('[Sheets-Sync] Starte Google Sheets Sync...')
   try {
-    await sheetKompletSynchronisieren(zeilen)
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout nach 25s')), 25000)
+    )
+    await Promise.race([sheetKompletSynchronisieren(zeilen), timeout])
   } catch (err) {
     console.error('[Sheets-Sync] Google Sheets Fehler:', err)
     const msg = err instanceof Error ? err.message : String(err)
