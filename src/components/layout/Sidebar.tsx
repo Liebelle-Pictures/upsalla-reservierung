@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { abmelden } from '@/app/actions/auth'
 
@@ -94,17 +95,14 @@ export function Sidebar() {
       {/* Logo Freizo */}
       <div style={{ padding: '28px 20px 24px' }}>
         <div>
-          <div
-            style={{
-              fontSize: '1.4rem',
-              fontWeight: 800,
-              color: '#FFFFFF',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
-            }}
-          >
-            Freizo
-          </div>
+          <Image
+            src="/freizo-logo-white.png"
+            alt="Freizo"
+            width={130}
+            height={45}
+            priority
+            style={{ objectFit: 'contain' }}
+          />
           <div
             style={{
               fontSize: '0.7rem',
@@ -112,7 +110,7 @@ export function Sidebar() {
               fontWeight: 500,
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
-              marginTop: '4px',
+              marginTop: '6px',
             }}
           >
             Upsalla · Wuppertal

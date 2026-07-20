@@ -34,6 +34,25 @@ export async function POST(request: NextRequest) {
           stripe_payment_intent_id: session.payment_intent as string ?? null,
         })
         .eq('id', reservierungId)
+
+      // E-Mail aus Stripe Checkout in Kundendatenbank übernehmen
+      const stripeEmail = session.customer_details?.email
+      if (stripeEmail) {
+        const { data: res } = await supabaseAdmin
+          .from('reservierungen')
+          .select('kunde_id')
+          .eq('id', reservierungId)
+          .single()
+
+        if (res?.kunde_id) {
+          await supabaseAdmin
+            .from('kunden')
+            .update({ email: stripeEmail })
+            .eq('id', res.kunde_id)
+
+          console.log(`[Stripe Webhook] E-Mail ${stripeEmail} für Kunde ${res.kunde_id} gespeichert`)
+        }
+      }
     }
   }
 

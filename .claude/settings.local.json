@@ -8,7 +8,18 @@
       "Bash(git config *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vercel *)",
+      "Bash(vercel logs *)",
+      "WebFetch(domain:upsalla-kinderpark.de)",
+      "Bash(npm install *)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('/Users/valeriusova/Downloads/fluted-vehicle-502819-f1-8e7a8c6a198f.json'\\)\\); print\\(d['private_key']\\)\")",
+      "Bash(sips -z 192 192 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-icon-color.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/public/icon-192.png\")",
+      "Bash(sips -z 512 512 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-icon-color.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/public/icon-512.png\")",
+      "Bash(sips -z 32 32 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-icon-color.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/src/app/icon.png\")",
+      "Bash(sips -z 180 180 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-icon-color.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/src/app/apple-icon.png\")",
+      "Bash(sips -Z 600 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-logo-white.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/public/freizo-logo-white.png\")"
     ]
   }
 }

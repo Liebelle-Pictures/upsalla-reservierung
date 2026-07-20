@@ -10,9 +10,20 @@ const nunito = Nunito({
 })
 
 export const metadata: Metadata = {
-  title: 'Freizo — Upsalla Kinderpark',
-  description: 'Internes Reservierungssystem für Upsalla Kinderpark Mitarbeiter',
+  title: 'Freizo — Reservierungssystem für Freizeitanlagen',
+  description: 'Freizo ist ein modernes Reservierungssystem für Freizeitanlagen. Jetzt für Upsalla Kinderpark Wuppertal.',
   manifest: '/manifest.json',
+  themeColor: '#1E1B4B',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Freizo',
+  },
+  openGraph: {
+    title: 'Freizo — Reservierungssystem',
+    description: 'Modernes Reservierungssystem für Freizeitanlagen.',
+    siteName: 'Freizo',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

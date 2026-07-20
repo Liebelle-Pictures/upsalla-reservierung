@@ -1,23 +1,34 @@
+import Image from 'next/image'
 import { LoginForm } from './LoginForm'
 
 export default function LoginPage() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
       style={{ background: 'var(--color-sidebar-bg)' }}
     >
       <div className="w-full max-w-sm">
+
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1 }}>
-            Freizo
-          </div>
-          <div style={{ fontSize: '0.75rem', color: '#A5B4FC', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '8px' }}>
-            Upsalla Kinderpark · Wuppertal
-          </div>
+        <div className="flex justify-center mb-3">
+          <Image
+            src="/freizo-logo-white.png"
+            alt="Freizo"
+            width={200}
+            height={70}
+            priority
+            style={{ objectFit: 'contain' }}
+          />
         </div>
 
-        {/* Card */}
+        {/* Slogan für externe Besucher */}
+        <div className="text-center mb-8">
+          <p style={{ fontSize: '0.78rem', color: '#818CF8', fontWeight: 500, letterSpacing: '0.04em' }}>
+            Reservierungssystem für Freizeitanlagen
+          </p>
+        </div>
+
+        {/* Login Card */}
         <div
           className="rounded-3xl p-8"
           style={{
@@ -30,6 +41,21 @@ export default function LoginPage() {
           </h2>
           <LoginForm />
         </div>
+
+        {/* Kontakt für externe Besucher */}
+        <div className="text-center mt-8" style={{ color: '#4C5B8A', fontSize: '0.75rem' }}>
+          <p>Upsalla Kinderpark Wuppertal</p>
+          <p style={{ marginTop: '4px' }}>
+            Interesse an Freizo?{' '}
+            <a
+              href="mailto:valeriuleo@gmail.com"
+              style={{ color: '#818CF8', textDecoration: 'underline' }}
+            >
+              Kontakt aufnehmen
+            </a>
+          </p>
+        </div>
+
       </div>
     </div>
   )
