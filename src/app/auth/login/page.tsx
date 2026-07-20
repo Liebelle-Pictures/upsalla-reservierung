@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import { LoginForm } from './LoginForm'
 
 export default function LoginPage() {
@@ -11,13 +10,11 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex justify-center mb-3">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/freizo-logo-white.png"
             alt="Freizo"
-            width={200}
-            height={70}
-            priority
-            style={{ objectFit: 'contain' }}
+            style={{ width: '200px', height: 'auto', objectFit: 'contain' }}
           />
         </div>
 

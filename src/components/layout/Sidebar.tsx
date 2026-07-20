@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { abmelden } from '@/app/actions/auth'
 
@@ -95,13 +94,11 @@ export function Sidebar() {
       {/* Logo Freizo */}
       <div style={{ padding: '28px 20px 24px' }}>
         <div>
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/freizo-logo-white.png"
             alt="Freizo"
-            width={130}
-            height={45}
-            priority
-            style={{ objectFit: 'contain' }}
+            style={{ width: '130px', height: 'auto', objectFit: 'contain' }}
           />
           <div
             style={{
