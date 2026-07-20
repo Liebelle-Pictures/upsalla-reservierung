@@ -40,17 +40,15 @@ export default function LoginPage() {
         </div>
 
         {/* Kontakt für externe Besucher */}
-        <div className="text-center mt-8" style={{ color: '#4C5B8A', fontSize: '0.75rem' }}>
-          <p>Upsalla Kinderpark Wuppertal</p>
-          <p style={{ marginTop: '4px' }}>
-            Interesse an Freizo?{' '}
-            <a
-              href="mailto:valeriuleo@gmail.com"
-              style={{ color: '#818CF8', textDecoration: 'underline' }}
-            >
-              Kontakt aufnehmen
-            </a>
-          </p>
+        <div className="text-center mt-8" style={{ color: '#A5B4FC', fontSize: '0.8rem' }}>
+          <p style={{ fontWeight: 600, color: '#C7D2FE' }}>Interesse an Freizo?</p>
+          <p style={{ marginTop: '6px', color: '#94A3B8' }}>Valeriu Sova</p>
+          <a
+            href="mailto:info@smartcallservice.de"
+            style={{ color: '#818CF8', textDecoration: 'underline', fontWeight: 600, fontSize: '0.85rem', marginTop: '4px', display: 'inline-block' }}
+          >
+            info@smartcallservice.de
+          </a>
         </div>
 
       </div>
