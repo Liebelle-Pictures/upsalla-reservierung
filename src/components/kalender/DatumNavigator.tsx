@@ -87,6 +87,9 @@ export function DatumNavigator({ datum, basePath = '/' }: Props) {
             </span>
           )}
         </h1>
+        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '2px', letterSpacing: '-0.01em' }}>
+          {datumKurz}
+        </div>
 
         {/* Klickbares Monat/Jahr öffnet Schnellnavigation */}
         <div className="relative" ref={pickerRef}>
