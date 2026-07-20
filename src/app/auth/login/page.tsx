@@ -20,8 +20,11 @@ export default function LoginPage() {
 
         {/* Slogan für externe Besucher */}
         <div className="text-center mb-8">
-          <p style={{ fontSize: '0.78rem', color: '#818CF8', fontWeight: 500, letterSpacing: '0.04em' }}>
-            Reservierungssystem für Freizeitanlagen
+          <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
+            Mehr Zeit für Spaß
+          </p>
+          <p style={{ fontSize: '0.8rem', fontWeight: 400, color: '#A5B4FC', letterSpacing: '0.03em' }}>
+            Reservierungssystem für Erlebnisanbieter
           </p>
         </div>
 
