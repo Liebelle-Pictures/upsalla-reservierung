@@ -7,6 +7,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/lena|api/cron|zahlung|agb).*)',
+    '/((?!_next/static|_next/image|favicon|manifest|icon|apple-icon|.*\\.(?:ico|png|jpg|jpeg|svg|webmanifest|json|css|js|woff2?|ttf|otf)$|api/webhooks|api/lena|api/cron|zahlung|agb).*)',
   ],
 }
