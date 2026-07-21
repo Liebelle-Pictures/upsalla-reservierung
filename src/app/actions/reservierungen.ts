@@ -198,7 +198,7 @@ export async function reservierungErstellen(
     const { sendeSMS } = await import('@/lib/twilio/client')
     await sendeSMS(
       telefon,
-      `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige} Uhr) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Stornobedingungen: freizo.app/agb`,
+      `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bei Fragen: 0202 2623339`,
     )
   } catch (err) {
     console.error('[Twilio] SMS-Fehler:', err)
