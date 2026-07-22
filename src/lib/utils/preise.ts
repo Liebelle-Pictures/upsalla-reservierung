@@ -1,15 +1,18 @@
 // Preise laut KONZEPT.md
-const FREIE_BEGLEITPERSONEN = 3
+export const FREIE_BEGLEITPERSONEN = 3
+export const KIND_PREIS_WOCHENTAG = 23.0
+export const KIND_PREIS_WOCHENENDE = 27.0
+export const ERWACHSENE_PREIS_WOCHENTAG = 6.5
+export const ERWACHSENE_PREIS_WOCHENENDE = 7.5
 
 export function berechneGesamtbetrag(
   kinderAnzahl: number,
   istWochenende: boolean,
   erwachseneAnzahl = 0,
 ): number {
-  const preisProPerson = istWochenende ? 27.0 : 23.0
-  const kindPreis = kinderAnzahl * preisProPerson
+  const kindPreis = kinderAnzahl * (istWochenende ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG)
   const zahlendErwachsene = Math.max(0, erwachseneAnzahl - FREIE_BEGLEITPERSONEN)
-  const erwachsenePreis = zahlendErwachsene * preisProPerson
+  const erwachsenePreis = zahlendErwachsene * (istWochenende ? ERWACHSENE_PREIS_WOCHENENDE : ERWACHSENE_PREIS_WOCHENTAG)
   return kindPreis + erwachsenePreis
 }
 

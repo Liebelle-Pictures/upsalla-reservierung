@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { reservierungErstellen, type ReservierungFormState } from '@/app/actions/reservierungen'
-import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene } from '@/lib/utils/preise'
+import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene, ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE } from '@/lib/utils/preise'
 import type { Loge } from '@/types/loge'
 import type { ZeitslotInfo } from '@/lib/utils/zeitslots'
 
@@ -37,11 +37,12 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
   const typOptionen = istBabywelt ? TYP_OPTIONEN_BABYWELT : TYP_OPTIONEN_NORMAL
   const defaultTyp  = istBabywelt ? 'BABYWELT_GEBURTSTAG' : 'GEBURTSTAG'
 
-  const weekend           = istTeuerterTag
-  const preisProPerson    = weekend ? 27.0 : 23.0
-  const gesamtbetrag      = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
-  const anzahlung         = berechneAnzahlung(gesamtbetrag)
-  const zahlendErwachsene = berechneZahlendErwachsene(erwachseneAnzahl)
+  const weekend                  = istTeuerterTag
+  const kindPreisProPerson       = weekend ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG
+  const erwachsenePreisProPerson = weekend ? ERWACHSENE_PREIS_WOCHENENDE : ERWACHSENE_PREIS_WOCHENTAG
+  const gesamtbetrag             = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
+  const anzahlung                = berechneAnzahlung(gesamtbetrag)
+  const zahlendErwachsene        = berechneZahlendErwachsene(erwachseneAnzahl)
 
   return (
     <form action={action} className="space-y-6 max-w-xl">
@@ -125,8 +126,8 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
       {/* Preisberechnung */}
       <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border)' }} className="space-y-2 text-sm">
         <div className="flex justify-between text-gray-600">
-          <span>{kinderAnzahl} Kinder × {preisProPerson.toFixed(2)} €</span>
-          <span>{(kinderAnzahl * preisProPerson).toFixed(2)} €</span>
+          <span>{kinderAnzahl} Kinder × {kindPreisProPerson.toFixed(2)} €</span>
+          <span>{(kinderAnzahl * kindPreisProPerson).toFixed(2)} €</span>
         </div>
         {erwachseneAnzahl > 0 && (
           <>
@@ -136,8 +137,8 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
             </div>
             {zahlendErwachsene > 0 && (
               <div className="flex justify-between text-gray-600">
-                <span>{zahlendErwachsene} Begleitperson{zahlendErwachsene !== 1 ? 'en' : ''} × {preisProPerson.toFixed(2)} €</span>
-                <span>{(zahlendErwachsene * preisProPerson).toFixed(2)} €</span>
+                <span>{zahlendErwachsene} Begleitperson{zahlendErwachsene !== 1 ? 'en' : ''} × {erwachsenePreisProPerson.toFixed(2)} €</span>
+                <span>{(zahlendErwachsene * erwachsenePreisProPerson).toFixed(2)} €</span>
               </div>
             )}
           </>
