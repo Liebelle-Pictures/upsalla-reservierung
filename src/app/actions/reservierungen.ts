@@ -174,10 +174,7 @@ export async function reservierungErstellen(
   }
 
   if (resError || !reservierung) {
-    if (resError?.code === '23505') {
-      return { fehler: 'Diese Loge ist für den gewählten Zeitslot bereits belegt.' }
-    }
-    return { fehler: `Fehler beim Speichern: ${resError?.message}` }
+    return { fehler: `Fehler beim Speichern: ${resError?.message ?? 'Unbekannter Fehler'}` }
   }
 
   // Stripe Anzahlungs-Link generieren (nur für Geburtstag-Typen)

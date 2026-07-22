@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/sheets-sync",
       "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/lena-report",
+      "schedule": "0 8 * * 1"
     }
   ]
 }

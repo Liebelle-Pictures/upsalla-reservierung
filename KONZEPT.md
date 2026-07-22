@@ -47,12 +47,19 @@ Paket WOCHENENDE/FERIEN/FEIERTAGE:
 
 Begleitpersonen (Erwachsene):
 - Erste 3 Begleitpersonen: gratis
-- Ab 4. Begleitperson: 23,00 € (Wochentag) / 27,00 € (Wochenende) pro Person
+- Ab 4. Begleitperson: 6,50 € (Montag–Freitag) / 7,50 € (Wochenende, Feiertage, Schulferien) pro Person
 
-### Logenkapazität
-- 6–10 Kinder = 1 Tisch (halbe Loge)
-- 11–20 Kinder = 2 Tische (ganze Loge)
+### Logenkapazität & Doppelbelegung
+- 6–9 Kinder = 1 Tisch (halbe Loge) → Doppelbelegung möglich
+- 10–20 Kinder = 2 Tische (ganze Loge) → Loge exklusiv
 - Maximum: 20 Kinder pro Loge
+
+#### Regel Doppelbelegung (2 Geburtstage pro Loge/Slot)
+- Gruppen mit 6–9 Kindern belegen nur einen Tisch (halbe Loge)
+- In derselben Loge / demselben Slot kann eine zweite Gruppe (ebenfalls 6–9 Kinder) gebucht werden
+- Gesamtlimit: max. 20 Kinder über beide Gruppen zusammen
+- Pflicht: Kunden mit 6–9 Kindern müssen beim Buchen darüber informiert werden, dass eine zweite Feier gleichzeitig stattfinden kann
+- Technische Konsequenz: Verfügbarkeitsprüfung muss Doppelbelegung erlauben, solange keine Gruppe ≥10 Kinder und Gesamtkinder ≤20
 
 ### Anzahlung & Stornierung
 - Anzahlung: 20% des Gesamtbetrags (automatisch berechnet)
@@ -136,6 +143,10 @@ Marketing-Automatisierung:
 - Sprache: Deutsch
 - Tap auf freien Slot → Reservierung erstellen
 - Tap auf Reservierung → Details + Bearbeiten
+
+## Standortdaten
+- Adresse: Porschestraße 22, 42279 Wuppertal
+- Telefon: 0202 2623339
 
 ## Was NICHT gebaut wird (Out of Scope)
 - Küchen-/Bestellsystem
