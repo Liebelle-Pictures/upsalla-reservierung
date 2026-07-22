@@ -456,3 +456,24 @@ export async function reservierungStornieren(
   revalidatePath(`/reservierungen/${id}`)
   return { rueckerstattungBetrag }
 }
+
+// Barzahlung vor Ort bestätigen — kein Stripe, kein SMS
+export async function barzahlungBestaetigen(id: string): Promise<void> {
+  const { data: r } = await supabaseAdmin
+    .from('reservierungen')
+    .select('notizen')
+    .eq('id', id)
+    .single()
+
+  const neueNotiz = r?.notizen
+    ? `${r.notizen} | Barzahlung vor Ort`
+    : 'Barzahlung vor Ort'
+
+  await supabaseAdmin
+    .from('reservierungen')
+    .update({ status: 'BESTAETIGT_BEZAHLT', notizen: neueNotiz })
+    .eq('id', id)
+
+  revalidatePath('/')
+  revalidatePath(`/reservierungen/${id}`)
+}

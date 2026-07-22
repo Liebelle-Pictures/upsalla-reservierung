@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { reservierungStornieren } from '@/app/actions/reservierungen'
+import { reservierungStornieren, barzahlungBestaetigen } from '@/app/actions/reservierungen'
 
 /* ── Status-Konfiguration ── */
 const STATUS_CONFIG = {
@@ -129,6 +129,7 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
   const [stornoOffen, setStornoOffen] = useState(false)
   const [mitAttest, setMitAttest] = useState(false)
   const [stornoErgebnis, setStornoErgebnis] = useState<{ rueckerstattungBetrag: number } | null>(null)
+  const [barzahlungPending, setBarzahlungPending] = useState(false)
 
   // Tage bis zum Termin (negativ = vergangen)
   const heute = new Date(); heute.setHours(0, 0, 0, 0)
@@ -560,6 +561,36 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
 
           {/* Aktions-Buttons: gestapelt, full-width */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+
+            {/* Barzahlung — nur wenn Anzahlung noch aussteht */}
+            {r.status === 'BESTAETIGT_AUSSTEHEND' && !stornoErgebnis && (
+              <button
+                onClick={() => {
+                  setBarzahlungPending(true)
+                  startTransition(async () => {
+                    await barzahlungBestaetigen(r.id)
+                    setBarzahlungPending(false)
+                    router.refresh()
+                  })
+                }}
+                disabled={barzahlungPending}
+                style={{
+                  height: '48px',
+                  borderRadius: '10px',
+                  background: '#16A34A',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  border: 'none',
+                  cursor: barzahlungPending ? 'not-allowed' : 'pointer',
+                  opacity: barzahlungPending ? 0.6 : 1,
+                  width: '100%',
+                }}
+              >
+                {barzahlungPending ? 'Wird gespeichert…' : '💵 Barzahlung bestätigen'}
+              </button>
+            )}
+
             {r.status !== 'STORNIERT' && !stornoErgebnis && (
               <button
                 onClick={() => router.push(`/reservierungen/${r.id}/bearbeiten`)}

@@ -1,4 +1,7 @@
+'use client'
+
 import { Fragment } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Loge } from '@/types/loge'
 import type { ZeitslotInfo } from '@/lib/utils/zeitslots'
 import type { Reservierung } from '@/types/reservierung'
@@ -34,6 +37,7 @@ interface Props {
 }
 
 export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props) {
+  const router = useRouter()
   const findeReservierungen = (logeId: string, zeitslot: number) =>
     reservierungen.filter(r => r.loge_id === logeId && r.zeitslot === zeitslot)
 
@@ -130,8 +134,35 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
                   {res.length === 0 && (
                     <FreierSlot datum={datum} logeId={loge.id} zeitslot={slot.nummer} farbe={cfg.farbe} />
                   )}
-                  {res.length === 1 && (
+                  {res.length === 1 && res[0].kinder_anzahl >= 10 && (
                     <ReservierungKarte reservierung={res[0]} />
+                  )}
+                  {res.length === 1 && res[0].kinder_anzahl < 10 && (
+                    <div className="flex flex-col h-full" style={{ gap: '6px', padding: '6px' }}>
+                      <div style={{ flex: '1 1 0', minHeight: 0 }}>
+                        <ReservierungKarte reservierung={res[0]} kompakt />
+                      </div>
+                      <button
+                        onClick={() => {
+                          const params = new URLSearchParams({ datum, loge_id: loge.id, zeitslot: String(slot.nummer) })
+                          router.push(`/reservierungen/neu?${params}`)
+                        }}
+                        style={{
+                          flexShrink: 0,
+                          height: '40px',
+                          borderRadius: '8px',
+                          background: `${cfg.farbe}15`,
+                          border: `1.5px dashed ${cfg.farbe}60`,
+                          color: cfg.farbe,
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          width: '100%',
+                        }}
+                      >
+                        + Zweite Gruppe
+                      </button>
+                    </div>
                   )}
                   {res.length >= 2 && (
                     <div className="flex flex-col h-full gap-1 p-1">
