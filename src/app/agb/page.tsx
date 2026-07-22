@@ -85,8 +85,9 @@ export default function AGBPage() {
                 auch bei kurzfristiger Stornierung <strong>vollständig erstattet</strong> —
                 vorausgesetzt, ein <strong>ärztliches Attest</strong> wird vorgelegt.
               </p>
-              <p style={{ ...s.p, marginTop: '10px' }}>
-                Das Attest kann per E-Mail eingereicht oder direkt vor Ort vorgelegt werden:{' '}
+              <p style={{ ...s.p, marginTop: '10px', fontWeight: 600, color: '#92400E' }}>
+                Das Attest muss am selben Tag wie die Stornierung vorgelegt werden —
+                persönlich vor Ort oder per E-Mail an:{' '}
                 <a href="mailto:info@upsalla-kinderpark.de" style={s.a}>info@upsalla-kinderpark.de</a>
               </p>
             </div>
@@ -100,14 +101,17 @@ export default function AGBPage() {
             <div style={s.boxGray}>
               <p style={s.p}><strong>23 € pro Kind</strong> — Wochentage (Mo–Fr, außerhalb von Ferien und Feiertagen)</p>
               <p style={{ ...s.p, marginTop: '8px' }}><strong>27 € pro Kind</strong> — Wochenenden, NRW Schulferien und gesetzliche Feiertage</p>
-              <p style={{ ...s.p, marginTop: '8px' }}>Die ersten 3 Begleitpersonen sind kostenfrei. Ab der 4. Begleitperson gilt derselbe Preis wie pro Kind.</p>
+              <p style={{ ...s.p, marginTop: '12px', borderTop: '1px solid #E5E7EB', paddingTop: '12px' }}>
+                Die ersten 3 Begleitpersonen sind kostenfrei.<br />
+                Ab der 4. Begleitperson: <strong>6,50 € pro Person</strong> (Mo–Fr) bzw. <strong>7,50 € pro Person</strong> (Wochenende, Ferien, Feiertage).
+              </p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
         <div style={s.footer}>
-          Upsalla Kinderpark Wuppertal · Friedrich-Engels-Allee 122–124 · 42285 Wuppertal<br />
+          Upsalla Kinderpark Wuppertal · Porschestraße 22 · 42279 Wuppertal<br />
           Tel: <a href="tel:020226233390" style={s.a}>0202 2623339</a> ·{' '}
           <a href="mailto:info@upsalla-kinderpark.de" style={s.a}>info@upsalla-kinderpark.de</a> ·{' '}
           <a href="http://www.upsalla-kinderpark.de" style={s.a}>upsalla-kinderpark.de</a>

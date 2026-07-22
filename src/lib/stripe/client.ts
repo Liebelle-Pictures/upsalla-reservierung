@@ -32,7 +32,7 @@ export async function erstelleAnzahlungsSession(
     // Stornierungsbedingungen direkt auf der Checkout-Seite — rechtlich informiert vor Zahlung
     custom_text: {
       submit: {
-        message: 'Mit der Zahlung bestätigst du unsere Stornierungsbedingungen: Kostenloser Storno bis 7 Tage vor dem Termin — Anzahlung wird vollständig erstattet. Bei Storno unter 7 Tagen verfällt die Anzahlung. Ausnahme: Krankheit des Kindes mit ärztlichem Attest.',
+        message: '── STORNIERUNGSBEDINGUNGEN ──\n✓ Kostenloser Storno bis 7 Tage vor dem Termin — Anzahlung wird vollständig erstattet.\n✗ Storno unter 7 Tagen — Anzahlung verfällt.\n✓ Ausnahme: Krankheit des Kindes mit ärztlichem Attest (Vorlage am selben Tag der Stornierung).',
       },
     },
     success_url: `${process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL}/zahlung/erfolg?session_id={CHECKOUT_SESSION_ID}`,
