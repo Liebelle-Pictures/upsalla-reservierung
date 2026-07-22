@@ -15,11 +15,35 @@ interface Props {
   reservierung: Reservierung & {
     kunden?: { vorname: string; nachname: string }
   }
+  kompakt?: boolean
 }
 
-export function ReservierungKarte({ reservierung }: Props) {
+export function ReservierungKarte({ reservierung, kompakt }: Props) {
   const router = useRouter()
   const cfg = STATUS_CONFIG[reservierung.status]
+
+  if (kompakt) {
+    return (
+      <button
+        onClick={() => router.push(`/reservierungen/${reservierung.id}`)}
+        className="w-full h-full flex flex-col rounded-lg overflow-hidden"
+        style={{ background: cfg.bg, border: `1.5px solid ${cfg.border}` }}
+      >
+        <div style={{ height: '4px', flexShrink: 0, background: cfg.dot }} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '6px', gap: '2px', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1E1B4B', lineHeight: 1.2 }}>
+            {reservierung.kunden ? `${reservierung.kunden.vorname} ${reservierung.kunden.nachname}` : '—'}
+          </div>
+          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4B5563' }}>
+            {reservierung.kinder_anzahl} Kinder
+          </div>
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '10px', color: cfg.text, background: `${cfg.dot}22` }}>
+            {cfg.label}
+          </span>
+        </div>
+      </button>
+    )
+  }
 
   return (
     <button

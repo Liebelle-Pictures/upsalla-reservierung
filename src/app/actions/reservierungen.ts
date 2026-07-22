@@ -49,6 +49,33 @@ export async function reservierungErstellen(
     return { fehler: 'Mindestens 1 Kind erforderlich.' }
   }
 
+  // Doppelbelegung prüfen
+  const { data: aktiveBelegungen } = await supabaseAdmin
+    .from('reservierungen')
+    .select('kinder_anzahl')
+    .eq('loge_id', logeId)
+    .eq('datum', datum)
+    .eq('zeitslot', zeitslot)
+    .neq('status', 'STORNIERT')
+
+  const belegungen = aktiveBelegungen ?? []
+  const bereitsKinder = belegungen.reduce((s, r) => s + r.kinder_anzahl, 0)
+
+  if (belegungen.length >= 2) {
+    return { fehler: 'Dieser Slot ist bereits mit zwei Gruppen belegt.' }
+  }
+  if (belegungen.length === 1) {
+    if (belegungen[0].kinder_anzahl >= 10) {
+      return { fehler: 'Diese Loge ist für diesen Slot exklusiv belegt (10+ Kinder).' }
+    }
+    if (kinderAnzahl >= 10) {
+      return { fehler: `In dieser Loge gibt es bereits eine Gruppe mit ${belegungen[0].kinder_anzahl} Kindern. Exklusive Buchung nicht möglich.` }
+    }
+    if (bereitsKinder + kinderAnzahl > 20) {
+      return { fehler: `In dieser Loge sind bereits ${bereitsKinder} Kinder gebucht. Maximal ${20 - bereitsKinder} weitere möglich.` }
+    }
+  }
+
   // Preisberechnung (inkl. NRW Feiertage und Schulferien)
   const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
   const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)

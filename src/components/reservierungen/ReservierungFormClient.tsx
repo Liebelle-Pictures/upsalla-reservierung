@@ -123,6 +123,13 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
         </div>
       </div>
 
+      {/* Hinweis Doppelbelegung */}
+      {kinderAnzahl >= 6 && kinderAnzahl <= 9 && (
+        <div style={{ background: '#FEFCE8', border: '1.5px solid #FDE047', borderRadius: '10px', padding: '12px 14px', fontSize: '0.82rem', color: '#A16207' }}>
+          <strong>Hinweis:</strong> Bei 6–9 Kindern belegt diese Gruppe nur einen Tisch (halbe Loge). Es kann gleichzeitig eine zweite Geburtstagsfeier in derselben Loge stattfinden. Bitte den Kunden darüber informieren.
+        </div>
+      )}
+
       {/* Preisberechnung */}
       <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border)' }} className="space-y-2 text-sm">
         <div className="flex justify-between text-gray-600">

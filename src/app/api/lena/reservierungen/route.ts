@@ -87,6 +87,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: 'Loge nicht angegeben. Bitte Loge vom Kunden erfragen.' })
   }
 
+  // Doppelbelegung prüfen
+  const { data: aktiveBelegungen } = await supabaseAdmin
+    .from('reservierungen')
+    .select('kinder_anzahl')
+    .eq('loge_id', loge_id)
+    .eq('datum', datumKorrigiert)
+    .eq('zeitslot', zeitslot)
+    .neq('status', 'STORNIERT')
+
+  const belegungen = aktiveBelegungen ?? []
+  const bereitsKinder = belegungen.reduce((s, r) => s + r.kinder_anzahl, 0)
+
+  if (belegungen.length >= 2) {
+    return NextResponse.json({ hinweis: 'Dieser Slot ist bereits mit zwei Gruppen belegt. Bitte einen anderen Termin oder eine andere Loge wählen.' })
+  }
+  if (belegungen.length === 1) {
+    const ersteGruppe = belegungen[0]
+    if (ersteGruppe.kinder_anzahl >= 10) {
+      return NextResponse.json({ hinweis: 'Diese Loge ist für diesen Slot exklusiv belegt (10+ Kinder). Bitte einen anderen Termin oder eine andere Loge wählen.' })
+    }
+    if (kinder_anzahl >= 10) {
+      return NextResponse.json({ hinweis: `In dieser Loge/diesem Slot gibt es bereits eine Gruppe mit ${ersteGruppe.kinder_anzahl} Kindern. Eine exklusive Buchung (10+ Kinder) ist nicht mehr möglich.` })
+    }
+    if (bereitsKinder + kinder_anzahl > 20) {
+      return NextResponse.json({ hinweis: `In dieser Loge sind bereits ${bereitsKinder} Kinder gebucht. Maximal ${20 - bereitsKinder} weitere Kinder möglich.` })
+    }
+  }
+
   const weekend = await istPreisteuerterTag(new Date(datumKorrigiert + 'T00:00:00'))
   const gesamtbetrag = berechneGesamtbetrag(kinder_anzahl, weekend, erwachsene)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)

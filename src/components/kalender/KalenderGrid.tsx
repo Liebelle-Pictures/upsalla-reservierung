@@ -34,8 +34,8 @@ interface Props {
 }
 
 export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props) {
-  const findeReservierung = (logeId: string, zeitslot: number) =>
-    reservierungen.find(r => r.loge_id === logeId && r.zeitslot === zeitslot)
+  const findeReservierungen = (logeId: string, zeitslot: number) =>
+    reservierungen.filter(r => r.loge_id === logeId && r.zeitslot === zeitslot)
 
   if (logen.length === 0) {
     return (
@@ -117,20 +117,34 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
             {/* Logen-Zellen */}
             {logen.map(loge => {
               const cfg = getLogeKonfig(loge.name)
-              const reservierung = findeReservierung(loge.id, slot.nummer)
+              const res = findeReservierungen(loge.id, slot.nummer)
               return (
                 <div
                   key={`${loge.id}-${slot.nummer}`}
                   className="rounded-xl h-full"
                   style={{
                     background: `${cfg.farbe}08`,
-                    border: reservierung ? 'none' : `2px dashed ${cfg.farbe}35`,
+                    border: res.length === 0 ? `2px dashed ${cfg.farbe}35` : 'none',
                   }}
                 >
-                  {reservierung ? (
-                    <ReservierungKarte reservierung={reservierung} />
-                  ) : (
+                  {res.length === 0 && (
                     <FreierSlot datum={datum} logeId={loge.id} zeitslot={slot.nummer} farbe={cfg.farbe} />
+                  )}
+                  {res.length === 1 && (
+                    <ReservierungKarte reservierung={res[0]} />
+                  )}
+                  {res.length >= 2 && (
+                    <div className="flex flex-col h-full gap-1 p-1">
+                      <div className="flex-1 min-h-0">
+                        <ReservierungKarte reservierung={res[0]} kompakt />
+                      </div>
+                      <div
+                        style={{ height: '2px', background: `${cfg.farbe}40`, flexShrink: 0 }}
+                      />
+                      <div className="flex-1 min-h-0">
+                        <ReservierungKarte reservierung={res[1]} kompakt />
+                      </div>
+                    </div>
                   )}
                 </div>
               )

@@ -56,27 +56,38 @@ async function handleVerfuegbarkeit(datumRaw: string) {
 
   const { data: belegt } = await supabaseAdmin
     .from('reservierungen')
-    .select('loge_id, zeitslot')
+    .select('loge_id, zeitslot, kinder_anzahl')
     .eq('datum', datum)
     .eq('standort_id', WUPPERTAL_STANDORT_ID)
     .neq('status', 'STORNIERT')
 
-  const belegtSet = new Set(
-    (belegt ?? []).map((r: { loge_id: string; zeitslot: number }) => `${r.loge_id}-${r.zeitslot}`)
-  )
+  // Belegungen pro Slot aggregieren
+  const belegMap = new Map<string, { anzahl: number; kinder: number }>()
+  for (const r of belegt ?? []) {
+    const key = `${r.loge_id}-${r.zeitslot}`
+    const b = belegMap.get(key) ?? { anzahl: 0, kinder: 0 }
+    belegMap.set(key, { anzahl: b.anzahl + 1, kinder: b.kinder + r.kinder_anzahl })
+  }
 
   const slots = getVerfuegbareSlots(datumObj, teuerterTag)
 
   const verfuegbar = (logen ?? []).flatMap((loge: { id: string; name: string; ist_babywelt: boolean }) =>
-    slots
-      .filter((s) => !belegtSet.has(`${loge.id}-${s.nummer}`))
-      .map((s) => ({
-        loge_id: loge.id,
-        loge_name: loge.name,
-        ist_babywelt: loge.ist_babywelt,
-        zeitslot: s.nummer,
-        uhrzeit: `${s.start} - ${s.ende} Uhr`,
-      }))
+    slots.flatMap((s) => {
+      const key = `${loge.id}-${s.nummer}`
+      const b = belegMap.get(key)
+
+      // Vollständig frei
+      if (!b) return [{ loge_id: loge.id, loge_name: loge.name, ist_babywelt: loge.ist_babywelt, zeitslot: s.nummer, uhrzeit: `${s.start} - ${s.ende} Uhr`, teil_belegt: false, max_kinder: 20 }]
+
+      // Bereits 2 Gruppen oder exklusive Gruppe (≥10 Kinder) → voll belegt
+      if (b.anzahl >= 2 || b.kinder >= 10) return []
+
+      // Halbe Loge frei (erste Gruppe hat <10 Kinder, Platz für 2. Gruppe)
+      const maxWeitere = 20 - b.kinder
+      if (maxWeitere >= 6) return [{ loge_id: loge.id, loge_name: loge.name, ist_babywelt: loge.ist_babywelt, zeitslot: s.nummer, uhrzeit: `${s.start} - ${s.ende} Uhr`, teil_belegt: true, bereits_kinder: b.kinder, max_kinder: maxWeitere }]
+
+      return []
+    })
   )
 
   return NextResponse.json({
@@ -84,6 +95,7 @@ async function handleVerfuegbarkeit(datumRaw: string) {
     preisTyp,
     preisProPerson: teuerterTag ? 27.0 : 23.0,
     verfuegbar,
+    hinweis_doppelbelegung: 'Logen mit teil_belegt:true haben bereits eine Gruppe. Zweite Gruppe möglich wenn eigene Kinder + bereits_kinder ≤ 20 und eigene Kinder < 10. Kunden darüber informieren!',
   })
 }
 
