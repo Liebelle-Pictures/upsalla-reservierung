@@ -17,7 +17,10 @@ const STATUS_CONFIG = {
 const VOLLBETRAG_CONFIG = { bg: '#FFF7ED', border: '#FED7AA', dot: '#EA580C', text: '#9A3412', label: 'Bestätigt — 100% vor Ort fällig' }
 
 /* ── Logen-Farbkodierung ── */
-const BABYWELT_FARBE = '#7C3AED'
+// Babywelt: entsättigte, "babyhafte" Töne — anders als die kräftigen Farben
+// der übrigen Logen, und untereinander nach Junge/Mädchen differenziert.
+const BABYWELT_JUNGE_FARBE    = '#6E8FB8' // gedecktes Blau
+const BABYWELT_MAERCHEN_FARBE = '#BF7E96' // gedecktes Altrosa
 
 // Reihenfolge wichtig: "regenbogen" muss vor "einhorn" geprüft werden,
 // sonst würde "Einhorn Regenbogen" die Farbe von "Einhorn Schloss" erben.
@@ -34,7 +37,10 @@ const LOGE_KONFIG = [
 ]
 
 function getLogeFarbe(name: string, istBabywelt?: boolean) {
-  if (istBabywelt) return { farbe: BABYWELT_FARBE, kategorie: 'Unisex' }
+  if (istBabywelt) {
+    const istJunge = name.toLowerCase().includes('junge')
+    return { farbe: istJunge ? BABYWELT_JUNGE_FARBE : BABYWELT_MAERCHEN_FARBE, kategorie: istJunge ? 'Jungen' : 'Mädchen' }
+  }
   const n = name.toLowerCase()
   return LOGE_KONFIG.find(k => k.match(n)) ?? { farbe: '#6366F1', kategorie: 'Unisex' }
 }

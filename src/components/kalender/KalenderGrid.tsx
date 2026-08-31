@@ -15,7 +15,10 @@ interface LogeKonfig {
   kategorie: 'Jungen' | 'Mädchen' | 'Unisex'
 }
 
-const BABYWELT_FARBE = '#7C3AED'
+// Babywelt: entsättigte, "babyhafte" Töne — bewusst anders als die kräftigen
+// Farben der übrigen Logen, und untereinander nach Junge/Mädchen differenziert.
+const BABYWELT_JUNGE_FARBE    = '#6E8FB8' // gedecktes Blau
+const BABYWELT_MAERCHEN_FARBE = '#BF7E96' // gedecktes Altrosa
 
 // Reihenfolge wichtig: "regenbogen" muss vor "einhorn" geprüft werden,
 // sonst würde "Einhorn Regenbogen" die Farbe von "Einhorn Schloss" erben.
@@ -32,7 +35,14 @@ const LOGE_KONFIG: Array<{ match: (n: string) => boolean } & LogeKonfig> = [
 ]
 
 function getLogeKonfig(loge: Loge): LogeKonfig {
-  if (loge.ist_babywelt) return { farbe: BABYWELT_FARBE, textfarbe: '#fff', kategorie: 'Unisex' }
+  if (loge.ist_babywelt) {
+    const istJunge = loge.name.toLowerCase().includes('junge')
+    return {
+      farbe: istJunge ? BABYWELT_JUNGE_FARBE : BABYWELT_MAERCHEN_FARBE,
+      textfarbe: '#fff',
+      kategorie: istJunge ? 'Jungen' : 'Mädchen',
+    }
+  }
   const n = loge.name.toLowerCase()
   return LOGE_KONFIG.find(k => k.match(n)) ?? { farbe: '#6366F1', textfarbe: '#fff', kategorie: 'Unisex' }
 }
@@ -102,7 +112,7 @@ function LogenReihe({ datum, logen, reservierungen, zeitslots }: ReiheProps) {
                 borderRadius: '10px 10px 0 0',
                 boxShadow: `0 2px 8px ${cfg.farbe}40`,
                 marginLeft: istTrenner ? '10px' : undefined,
-                borderLeft: istTrenner ? '4px solid #7C3AED' : undefined,
+                borderLeft: istTrenner ? '4px solid #94A3B8' : undefined,
               }}
             >
               <span style={{ fontWeight: 700, color: cfg.textfarbe, fontSize: '0.85rem', lineHeight: 1.2 }}>

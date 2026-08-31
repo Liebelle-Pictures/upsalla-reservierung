@@ -21,7 +21,9 @@ const ZEITSLOTS: Record<number, string> = {
   2: '15:00 – 19:00 Uhr',
 }
 
-const BABYWELT_FARBE = '#7C3AED'
+// Babywelt: entsättigte, "babyhafte" Töne, nach Junge/Mädchen differenziert
+const BABYWELT_JUNGE_FARBE    = '#6E8FB8'
+const BABYWELT_MAERCHEN_FARBE = '#BF7E96'
 
 interface Reservierung {
   id: string
@@ -97,15 +99,17 @@ export function TagesuebersichtTabelle({ reservierungen }: Props) {
                 const vollbetragFaellig = r.status === 'BESTAETIGT_BEZAHLT' && Number(r.anzahlung_betrag) === 0
                 const sf = vollbetragFaellig ? VOLLBETRAG_FARBE : STATUSFARBEN[r.status]
                 const istBabywelt = !!r.logen?.ist_babywelt
+                const istBabyweltJunge = istBabywelt && !!r.logen?.name.toLowerCase().includes('junge')
+                const babyweltFarbe = istBabyweltJunge ? BABYWELT_JUNGE_FARBE : BABYWELT_MAERCHEN_FARBE
                 return (
                   <tr
                     key={r.id}
                     style={{
                       background: idx % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)',
-                      borderLeft: istBabywelt ? `3px solid ${BABYWELT_FARBE}` : undefined,
+                      borderLeft: istBabywelt ? `3px solid ${babyweltFarbe}` : undefined,
                     }}
                   >
-                    <td className="px-3 py-3 font-bold" style={{ color: istBabywelt ? BABYWELT_FARBE : 'var(--color-text)' }}>
+                    <td className="px-3 py-3 font-bold" style={{ color: istBabywelt ? babyweltFarbe : 'var(--color-text)' }}>
                       {r.logen?.name ?? '—'}
                     </td>
                     <td className="px-3 py-3 font-medium" style={{ color: 'var(--color-text)' }}>
