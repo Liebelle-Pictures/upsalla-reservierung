@@ -10,6 +10,9 @@ const STATUS_CONFIG: Record<string, { dot: string; bg: string; text: string; lab
   INTERN_GESPERRT:       { dot: '#9CA3AF', bg: '#F4F4F5', text: '#6B7280', label: 'Gesperrt' },
 }
 
+// Altbuchung (Import): als BEZAHLT markiert, aber ohne echte Anzahlung — voller Betrag vor Ort fällig
+const VOLLBETRAG_CONFIG = { dot: '#EA580C', bg: '#FFF7ED', text: '#9A3412', label: '100% vor Ort' }
+
 interface Reservierung {
   id: string
   datum: string
@@ -19,6 +22,7 @@ interface Reservierung {
   kinder_anzahl: number
   gesamtbetrag: number
   anzahlung_betrag: number
+  angenommen_von: string
   logen: { name: string } | null
   kunden: { vorname: string; nachname: string; telefon: string } | null
 }
@@ -44,7 +48,10 @@ export function ReservierungListe({ reservierungen }: Props) {
   return (
     <div className="flex flex-col gap-2">
       {reservierungen.map(r => {
-        const cfg = STATUS_CONFIG[r.status] ?? { dot: '#9CA3AF', bg: '#F4F4F5', text: '#6B7280', label: r.status }
+        const vollbetragFaellig = r.status === 'BESTAETIGT_BEZAHLT' && Number(r.anzahlung_betrag) === 0
+        const cfg = vollbetragFaellig
+          ? VOLLBETRAG_CONFIG
+          : STATUS_CONFIG[r.status] ?? { dot: '#9CA3AF', bg: '#F4F4F5', text: '#6B7280', label: r.status }
         const datum = new Date(r.datum + 'T00:00:00').toLocaleDateString('de-DE', {
           weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
         })
@@ -78,6 +85,9 @@ export function ReservierungListe({ reservierungen }: Props) {
                 </div>
                 <div className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
                   {datum} · Slot {r.zeitslot} · {r.kinder_anzahl} Kinder
+                </div>
+                <div className="text-xs font-medium mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                  Angenommen von: <span style={{ fontWeight: 700 }}>{r.angenommen_von}</span>
                 </div>
               </div>
 

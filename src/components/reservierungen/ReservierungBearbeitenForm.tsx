@@ -22,6 +22,7 @@ interface Props {
     kinder_anzahl: number
     erwachsene_anzahl: number
     notizen: string | null
+    angenommen_von: string
     logen: { name: string } | null
     kunden: { id: string; vorname: string; nachname: string; telefon: string; email: string | null } | null
   }
@@ -35,6 +36,7 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
   )
   const [kinderAnzahl, setKinderAnzahl]         = useState(r.kinder_anzahl)
   const [erwachseneAnzahl, setErwachseneAnzahl] = useState(r.erwachsene_anzahl)
+  const [typ, setTyp] = useState(r.typ)
 
   const weekend                  = istTeuerterTag
   const kindPreisProPerson       = weekend ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG
@@ -67,7 +69,8 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
         <label className="block text-sm font-medium text-gray-700 mb-1">Art der Reservierung</label>
         <select
           name="typ"
-          defaultValue={r.typ}
+          value={typ}
+          onChange={(e) => setTyp(e.target.value)}
           className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {TYP_OPTIONEN.map((o) => (
@@ -127,7 +130,7 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
             name="kinder_anzahl"
             type="number"
             min={1}
-            max={20}
+            max={typ === 'GRUPPE' ? 100 : 20}
             value={kinderAnzahl}
             onChange={(e) => setKinderAnzahl(Number(e.target.value))}
             required
@@ -185,6 +188,16 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
           rows={3}
           defaultValue={r.notizen ?? ''}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+        />
+      </div>
+
+      {/* Angenommen von */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Angenommen von</label>
+        <input
+          name="angenommen_von"
+          defaultValue={r.angenommen_von}
+          className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 

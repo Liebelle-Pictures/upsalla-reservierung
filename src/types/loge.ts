@@ -6,6 +6,8 @@ export interface Loge {
   tische_anzahl: number    // 2
   ist_babywelt: boolean
   aktiv: boolean
+  kapazitaet_flexibel: boolean
+  verfuegbarkeit_regel: string | null   // z.B. 'SA_SO_SLOT1' — null = normale Verfügbarkeit
 }
 
 export interface Zeitslot {

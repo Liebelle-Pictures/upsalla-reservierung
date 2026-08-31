@@ -11,6 +11,10 @@ const STATUS_CONFIG: Record<Reservierung['status'], { dot: string; bg: string; b
   INTERN_GESPERRT:       { dot: '#9CA3AF', bg: '#F4F4F5', border: '#E4E4E7', text: '#6B7280', label: 'Gesperrt' },
 }
 
+// Altbuchungen (Import): als BEZAHLT markiert, aber ohne echte Anzahlung —
+// vor Ort ist der VOLLE Betrag fällig, nicht nur der übliche Restbetrag.
+const VOLLBETRAG_CONFIG = { dot: '#EA580C', bg: '#FFF7ED', border: '#FED7AA', text: '#9A3412', label: '100% vor Ort' }
+
 interface Props {
   reservierung: Reservierung & {
     kunden?: { vorname: string; nachname: string }
@@ -20,7 +24,8 @@ interface Props {
 
 export function ReservierungKarte({ reservierung, kompakt }: Props) {
   const router = useRouter()
-  const cfg = STATUS_CONFIG[reservierung.status]
+  const vollbetragFaellig = reservierung.status === 'BESTAETIGT_BEZAHLT' && Number(reservierung.anzahlung_betrag) === 0
+  const cfg = vollbetragFaellig ? VOLLBETRAG_CONFIG : STATUS_CONFIG[reservierung.status]
 
   if (kompakt) {
     return (

@@ -12,10 +12,16 @@ const STATUSFARBEN: Record<string, { color: string; bg: string }> = {
   INTERN_GESPERRT:       { color: '#6B7280', bg: '#F4F4F5' },
 }
 
+// Altbuchung (Import): als BEZAHLT markiert, aber ohne echte Anzahlung — voller Betrag vor Ort fällig
+const VOLLBETRAG_LABEL = '100% vor Ort'
+const VOLLBETRAG_FARBE = { color: '#9A3412', bg: '#FFF7ED' }
+
 const ZEITSLOTS: Record<number, string> = {
   1: '10:30 – 14:30 Uhr',
   2: '15:00 – 19:00 Uhr',
 }
+
+const BABYWELT_FARBE = '#7C3AED'
 
 interface Reservierung {
   id: string
@@ -24,9 +30,11 @@ interface Reservierung {
   typ: string
   kinder_anzahl: number
   erwachsene_anzahl: number
+  gesamtbetrag: number
   anzahlung_betrag: number
   notizen: string | null
-  logen: { name: string } | null
+  angenommen_von: string
+  logen: { name: string; ist_babywelt?: boolean } | null
   kunden: { vorname: string; nachname: string; telefon: string } | null
 }
 
@@ -48,6 +56,8 @@ export function TagesuebersichtTabelle({ reservierungen }: Props) {
 
   const RenderSlot = ({ slot, nummer }: { slot: Reservierung[]; nummer: number }) => {
     if (slot.length === 0) return null
+    // Babywelt-Reservierungen immer zuletzt auflisten
+    const sortiert = [...slot].sort((a, b) => Number(!!a.logen?.ist_babywelt) - Number(!!b.logen?.ist_babywelt))
     return (
       <div className="mb-8 print-slot">
         {/* Slot-Überschrift */}
@@ -60,17 +70,18 @@ export function TagesuebersichtTabelle({ reservierungen }: Props) {
           style={{ border: '1.5px solid var(--color-border)' }}>
           <table className="w-full border-collapse text-sm">
             <colgroup>
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '17%' }} />
-              <col style={{ width: '7%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '14%' }} />
               <col style={{ width: '6%' }} />
-              <col style={{ width: '27%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '12%' }} />
               <col style={{ width: '14%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: 'var(--color-sidebar-bg)' }}>
-                {['Loge', 'Name', 'Telefon', 'Kinder', 'Erw.', 'Notizen', 'Anzahlung'].map((h, i) => (
+                {['Loge', 'Name', 'Telefon', 'Kinder', 'Erw.', 'Notizen', 'Angenommen von', 'Anzahlung'].map((h, i) => (
                   <th
                     key={h}
                     className={`px-3 py-3 font-bold text-left ${i === 3 || i === 4 ? 'text-center' : ''}`}
@@ -82,11 +93,19 @@ export function TagesuebersichtTabelle({ reservierungen }: Props) {
               </tr>
             </thead>
             <tbody>
-              {slot.map((r, idx) => {
-                const sf = STATUSFARBEN[r.status]
+              {sortiert.map((r, idx) => {
+                const vollbetragFaellig = r.status === 'BESTAETIGT_BEZAHLT' && Number(r.anzahlung_betrag) === 0
+                const sf = vollbetragFaellig ? VOLLBETRAG_FARBE : STATUSFARBEN[r.status]
+                const istBabywelt = !!r.logen?.ist_babywelt
                 return (
-                  <tr key={r.id} style={{ background: idx % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)' }}>
-                    <td className="px-3 py-3 font-bold" style={{ color: 'var(--color-text)' }}>
+                  <tr
+                    key={r.id}
+                    style={{
+                      background: idx % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)',
+                      borderLeft: istBabywelt ? `3px solid ${BABYWELT_FARBE}` : undefined,
+                    }}
+                  >
+                    <td className="px-3 py-3 font-bold" style={{ color: istBabywelt ? BABYWELT_FARBE : 'var(--color-text)' }}>
                       {r.logen?.name ?? '—'}
                     </td>
                     <td className="px-3 py-3 font-medium" style={{ color: 'var(--color-text)' }}>
@@ -104,13 +123,16 @@ export function TagesuebersichtTabelle({ reservierungen }: Props) {
                     <td className="px-3 py-3 text-xs max-w-[200px]" style={{ color: 'var(--color-text-muted)' }}>
                       {r.notizen ?? '—'}
                     </td>
+                    <td className="px-3 py-3 text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                      {r.angenommen_von}
+                    </td>
                     <td className="px-3 py-3">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
                         style={{ color: sf?.color ?? '#6B7280', background: sf?.bg ?? '#F4F4F5' }}>
-                        {STATUSLABEL[r.status] ?? r.status}
+                        {vollbetragFaellig ? VOLLBETRAG_LABEL : STATUSLABEL[r.status] ?? r.status}
                       </span>
-                      <div className="text-xs mt-0.5 font-medium" style={{ color: 'var(--color-text-muted)' }}>
-                        {Number(r.anzahlung_betrag).toFixed(2)} €
+                      <div className="text-xs mt-0.5 font-medium" style={{ color: vollbetragFaellig ? '#9A3412' : 'var(--color-text-muted)' }}>
+                        {vollbetragFaellig ? Number(r.gesamtbetrag).toFixed(2) : Number(r.anzahlung_betrag).toFixed(2)} €
                       </div>
                     </td>
                   </tr>

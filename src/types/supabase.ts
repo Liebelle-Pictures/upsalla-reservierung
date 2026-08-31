@@ -43,6 +43,8 @@ export interface Database {
           tische_anzahl: number
           ist_babywelt: boolean
           aktiv: boolean
+          kapazitaet_flexibel: boolean
+          verfuegbarkeit_regel: string | null
           erstellt_am: string
         }
         Insert: {
@@ -53,6 +55,8 @@ export interface Database {
           tische_anzahl?: number
           ist_babywelt?: boolean
           aktiv?: boolean
+          kapazitaet_flexibel?: boolean
+          verfuegbarkeit_regel?: string | null
           erstellt_am?: string
         }
         Update: {
@@ -63,6 +67,8 @@ export interface Database {
           tische_anzahl?: number
           ist_babywelt?: boolean
           aktiv?: boolean
+          kapazitaet_flexibel?: boolean
+          verfuegbarkeit_regel?: string | null
           erstellt_am?: string
         }
       }
@@ -128,6 +134,7 @@ export interface Database {
           stripe_payment_link: string | null
           stripe_payment_intent_id: string | null
           notizen: string | null
+          angenommen_von: string
           erstellt_am: string
           aktualisiert_am: string
         }
@@ -148,6 +155,7 @@ export interface Database {
           stripe_payment_link?: string | null
           stripe_payment_intent_id?: string | null
           notizen?: string | null
+          angenommen_von?: string
           erstellt_am?: string
           aktualisiert_am?: string
         }
@@ -168,6 +176,7 @@ export interface Database {
           stripe_payment_link?: string | null
           stripe_payment_intent_id?: string | null
           notizen?: string | null
+          angenommen_von?: string
           erstellt_am?: string
           aktualisiert_am?: string
         }

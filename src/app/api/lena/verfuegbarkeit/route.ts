@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { getVerfuegbareSlots } from '@/lib/utils/zeitslots'
+import { getVerfuegbareSlots, logeIstVerfuegbarFuerSlot } from '@/lib/utils/zeitslots'
 import { istPreisteuerterTag, getPreisTypLabel } from '@/lib/utils/feiertage'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 
@@ -49,7 +49,7 @@ async function handleVerfuegbarkeit(datumRaw: string) {
 
   const { data: logen } = await supabaseAdmin
     .from('logen')
-    .select('id, name, ist_babywelt')
+    .select('id, name, ist_babywelt, kapazitaet_flexibel, verfuegbarkeit_regel')
     .eq('standort_id', WUPPERTAL_STANDORT_ID)
     .eq('aktiv', true)
     .order('name')
@@ -71,10 +71,30 @@ async function handleVerfuegbarkeit(datumRaw: string) {
 
   const slots = getVerfuegbareSlots(datumObj, teuerterTag)
 
-  const verfuegbar = (logen ?? []).flatMap((loge: { id: string; name: string; ist_babywelt: boolean }) =>
-    slots.flatMap((s) => {
+  interface VerfuegbarSlot {
+    loge_id: string
+    loge_name: string
+    ist_babywelt: boolean
+    zeitslot: number
+    uhrzeit: string
+    teil_belegt: boolean
+    bereits_kinder?: number
+    max_kinder: number | null
+  }
+
+  const verfuegbar: VerfuegbarSlot[] = (logen ?? []).flatMap((loge: { id: string; name: string; ist_babywelt: boolean; kapazitaet_flexibel: boolean; verfuegbarkeit_regel: string | null }) =>
+    slots.flatMap((s): VerfuegbarSlot[] => {
+      // Loge-spezifische Verfügbarkeitsregel (z.B. Runde Tische unten: nur Sa/So Slot 1)
+      if (!logeIstVerfuegbarFuerSlot(loge.verfuegbarkeit_regel, datumObj, s.nummer)) return []
+
       const key = `${loge.id}-${s.nummer}`
       const b = belegMap.get(key)
+
+      // Flexible Kapazität (z.B. BBQ Zelt): kein fester 20er-Deckel, nur "schon belegt" blockiert
+      if (loge.kapazitaet_flexibel) {
+        if (b && b.anzahl >= 1) return []
+        return [{ loge_id: loge.id, loge_name: loge.name, ist_babywelt: loge.ist_babywelt, zeitslot: s.nummer, uhrzeit: `${s.start} - ${s.ende} Uhr`, teil_belegt: false, max_kinder: null }]
+      }
 
       // Vollständig frei
       if (!b) return [{ loge_id: loge.id, loge_name: loge.name, ist_babywelt: loge.ist_babywelt, zeitslot: s.nummer, uhrzeit: `${s.start} - ${s.ende} Uhr`, teil_belegt: false, max_kinder: 20 }]

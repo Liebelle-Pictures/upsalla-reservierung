@@ -36,6 +36,7 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
   const istBabywelt = loge.name.toLowerCase().includes('babywelt')
   const typOptionen = istBabywelt ? TYP_OPTIONEN_BABYWELT : TYP_OPTIONEN_NORMAL
   const defaultTyp  = istBabywelt ? 'BABYWELT_GEBURTSTAG' : 'GEBURTSTAG'
+  const [typ, setTyp] = useState(defaultTyp)
 
   const weekend                  = istTeuerterTag
   const kindPreisProPerson       = weekend ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG
@@ -61,7 +62,7 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
       {/* Typ */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Art der Reservierung *</label>
-        <select name="typ" defaultValue={defaultTyp} className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select name="typ" value={typ} onChange={(e) => setTyp(e.target.value)} className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
           {typOptionen.map((o) => (
             <option key={o.wert} value={o.wert}>{o.label}</option>
           ))}
@@ -102,8 +103,8 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
           <input
             name="kinder_anzahl"
             type="number"
-            min={6}
-            max={20}
+            min={typ === 'GRUPPE' ? 1 : 6}
+            max={typ === 'GRUPPE' ? 100 : 20}
             value={kinderAnzahl}
             onChange={(e) => setKinderAnzahl(Number(e.target.value))}
             required
@@ -164,6 +165,12 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Notizen</label>
         <textarea name="notizen" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+      </div>
+
+      {/* Angenommen von */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Angenommen von</label>
+        <input name="angenommen_von" defaultValue="KI LENA" className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
       {/* DSGVO */}

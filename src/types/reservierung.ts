@@ -29,6 +29,7 @@ export interface Reservierung {
   stripe_payment_link?: string
   stripe_payment_intent_id?: string
   notizen?: string
+  angenommen_von: string
   erstellt_am: string
   aktualisiert_am: string
 }
@@ -43,4 +44,5 @@ export interface ReservierungErstellen {
   kinder_anzahl: number
   erwachsene_anzahl: number
   notizen?: string
+  angenommen_von?: string
 }

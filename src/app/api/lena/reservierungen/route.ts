@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
+import { logeIstVerfuegbarFuerSlot } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 
@@ -87,6 +88,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: 'Loge nicht angegeben. Bitte Loge vom Kunden erfragen.' })
   }
 
+  // Loge-spezifische Verfügbarkeitsregel prüfen (z.B. Runde Tische unten: nur Sa/So Slot 1)
+  const { data: logeRegel } = await supabaseAdmin
+    .from('logen')
+    .select('verfuegbarkeit_regel')
+    .eq('id', loge_id)
+    .single()
+
+  if (!logeIstVerfuegbarFuerSlot(logeRegel?.verfuegbarkeit_regel ?? null, new Date(datumKorrigiert + 'T00:00:00'), zeitslot)) {
+    return NextResponse.json({ hinweis: 'Diese Loge ist an diesem Tag/Zeitslot nicht verfügbar. Bitte einen anderen Termin oder eine andere Loge wählen.' })
+  }
+
   // Doppelbelegung prüfen
   const { data: aktiveBelegungen } = await supabaseAdmin
     .from('reservierungen')
@@ -168,6 +180,7 @@ export async function POST(request: NextRequest) {
     gesamtbetrag,
     anzahlung_betrag: anzahlungBetrag,
     notizen: notizen ?? null,
+    angenommen_von: 'KI LENA',
     stripe_payment_link: null,
     stripe_payment_intent_id: null,
     aktualisiert_am: new Date().toISOString(),

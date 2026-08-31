@@ -13,18 +13,28 @@ const STATUS_CONFIG = {
   INTERN_GESPERRT:       { bg: '#F4F4F5', border: '#D4D4D8', dot: '#9CA3AF', text: '#6B7280', label: 'Intern gesperrt' },
 }
 
+// Altbuchung (Import): als BEZAHLT markiert, aber ohne echte Anzahlung — voller Betrag vor Ort fällig
+const VOLLBETRAG_CONFIG = { bg: '#FFF7ED', border: '#FED7AA', dot: '#EA580C', text: '#9A3412', label: 'Bestätigt — 100% vor Ort fällig' }
+
 /* ── Logen-Farbkodierung ── */
+const BABYWELT_FARBE = '#7C3AED'
+
+// Reihenfolge wichtig: "regenbogen" muss vor "einhorn" geprüft werden,
+// sonst würde "Einhorn Regenbogen" die Farbe von "Einhorn Schloss" erben.
 const LOGE_KONFIG = [
   { match: (n: string) => n.includes('jungs'),                                farbe: '#2563EB', kategorie: 'Jungen'  },
   { match: (n: string) => n.includes('spiderman') || n.includes('marvel'),   farbe: '#DC2626', kategorie: 'Jungen'  },
   { match: (n: string) => n.includes('anna') || n.includes('elsa'),          farbe: '#0284C7', kategorie: 'Mädchen' },
+  { match: (n: string) => n.includes('regenbogen') || n.includes('märchen'), farbe: '#0D9488', kategorie: 'Unisex'  },
   { match: (n: string) => n.includes('einhorn'),                              farbe: '#9333EA', kategorie: 'Mädchen' },
   { match: (n: string) => n.includes('mädchen'),                             farbe: '#DB2777', kategorie: 'Mädchen' },
-  { match: (n: string) => n.includes('märchen') || n.includes('regenbogen'), farbe: '#0D9488', kategorie: 'Unisex'  },
   { match: (n: string) => n.includes('safari'),                              farbe: '#D97706', kategorie: 'Unisex'  },
+  { match: (n: string) => n.includes('bbq') || n.includes('zelt'),           farbe: '#EA580C', kategorie: 'Unisex'  },
+  { match: (n: string) => n.includes('runde tische'),                        farbe: '#57534E', kategorie: 'Unisex'  },
 ]
 
-function getLogeFarbe(name: string) {
+function getLogeFarbe(name: string, istBabywelt?: boolean) {
+  if (istBabywelt) return { farbe: BABYWELT_FARBE, kategorie: 'Unisex' }
   const n = name.toLowerCase()
   return LOGE_KONFIG.find(k => k.match(n)) ?? { farbe: '#6366F1', kategorie: 'Unisex' }
 }
@@ -44,9 +54,10 @@ interface Props {
     stripe_payment_link: string | null
     stripe_payment_intent_id: string | null
     notizen: string | null
+    angenommen_von: string
     erstellt_am: string
     kunden: { vorname: string; nachname: string; telefon: string; email: string | null } | null
-    logen: { name: string } | null
+    logen: { name: string; ist_babywelt?: boolean } | null
   }
 }
 
@@ -150,9 +161,11 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
 
-  const cfg = STATUS_CONFIG[r.status]
-  const logeFarbe = r.logen ? getLogeFarbe(r.logen.name) : { farbe: '#6366F1', kategorie: 'Unisex' }
   const restbetrag = Number(r.gesamtbetrag) - Number(r.anzahlung_betrag)
+  // Altbuchung (Import): als BEZAHLT markiert, aber ohne echte Anzahlung — vor Ort ist der VOLLE Betrag fällig
+  const vollbetragFaellig = r.status === 'BESTAETIGT_BEZAHLT' && Number(r.anzahlung_betrag) === 0
+  const cfg = vollbetragFaellig ? VOLLBETRAG_CONFIG : STATUS_CONFIG[r.status]
+  const logeFarbe = r.logen ? getLogeFarbe(r.logen.name, r.logen.ist_babywelt) : { farbe: '#6366F1', kategorie: 'Unisex' }
   const zeitslotText = r.zeitslot === 1 ? 'Slot 1 — 10:30–14:30 Uhr' : 'Slot 2 — 15:00–19:00 Uhr'
   const kundenName = r.kunden ? `${r.kunden.vorname} ${r.kunden.nachname}` : '—'
 
@@ -218,6 +231,7 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
           <Zeile label="Typ" wert={r.typ} />
           <Zeile label="Kinder" wert={`${r.kinder_anzahl} Kinder`} />
           <Zeile label="Erwachsene" wert={r.erwachsene_anzahl} />
+          <Zeile label="Angenommen von" wert={r.angenommen_von} />
           {r.notizen && <Zeile label="Notizen" wert={r.notizen} />}
 
           <Divider />
@@ -315,8 +329,39 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
             </span>
           </div>
 
-          {/* Noch zu kassieren — nur wenn bezahlt */}
-          {r.status === 'BESTAETIGT_BEZAHLT' && (
+          {/* Altbuchung ohne echte Anzahlung — voller Betrag vor Ort fällig */}
+          {vollbetragFaellig && (
+            <div
+              style={{
+                background: '#FFF7ED',
+                border: '1.5px solid #FED7AA',
+                borderRadius: '12px',
+                padding: '20px',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: '#9A3412',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  marginBottom: '8px',
+                }}
+              >
+                ⚠️ Altbuchung — keine Anzahlung erfasst
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#9A3412', marginBottom: '12px', lineHeight: 1.5 }}>
+                Diese Reservierung wurde aus der bestehenden Buchungsliste übernommen. Es wurde noch keine Anzahlung kassiert — vor Ort ist der <strong>volle Betrag</strong> fällig.
+              </div>
+              <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#9A3412', lineHeight: 1 }}>
+                {restbetrag.toFixed(2)} <span style={{ fontSize: '1.4rem' }}>€</span>
+              </div>
+            </div>
+          )}
+
+          {/* Noch zu kassieren — normale bezahlte Reservierung (echte Anzahlung erhalten) */}
+          {r.status === 'BESTAETIGT_BEZAHLT' && !vollbetragFaellig && (
             <div
               style={{
                 background: '#F0FFF4',

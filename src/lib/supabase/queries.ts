@@ -73,7 +73,7 @@ export async function getReservierungenFuerKunde(kundeId: string): Promise<Reser
 export async function getReservierungenMitDetails(datum: string, standortId: string) {
   const { data } = await supabaseAdmin
     .from('reservierungen')
-    .select('id, datum, zeitslot, status, typ, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, notizen, logen(name), kunden(vorname, nachname, telefon)')
+    .select('id, datum, zeitslot, status, typ, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, notizen, angenommen_von, logen(name, ist_babywelt), kunden(vorname, nachname, telefon)')
     .eq('datum', datum)
     .eq('standort_id', standortId)
     .neq('status', 'STORNIERT')
@@ -85,7 +85,7 @@ export async function getReservierungenMitDetails(datum: string, standortId: str
 export async function getAlleReservierungen(standortId: string, status?: string) {
   let query = supabaseAdmin
     .from('reservierungen')
-    .select('id, datum, zeitslot, status, typ, kinder_anzahl, gesamtbetrag, anzahlung_betrag, logen(name), kunden(vorname, nachname, telefon)')
+    .select('id, datum, zeitslot, status, typ, kinder_anzahl, gesamtbetrag, anzahlung_betrag, angenommen_von, logen(name), kunden(vorname, nachname, telefon)')
     .eq('standort_id', standortId)
     .order('datum', { ascending: false })
     .order('zeitslot', { ascending: true })
@@ -101,7 +101,7 @@ export async function getAlleReservierungen(standortId: string, status?: string)
 export async function getReservierung(id: string) {
   const { data } = await supabaseAdmin
     .from('reservierungen')
-    .select('*, kunden(*), logen(name), standorte(name)')
+    .select('*, kunden(*), logen(name, ist_babywelt), standorte(name)')
     .eq('id', id)
     .single()
   return data
@@ -116,7 +116,13 @@ export async function getLogen(standortId: string): Promise<Loge[]> {
     .order('name')
 
   if (error) throw new Error(error.message)
-  return (data ?? []) as unknown as Loge[]
+
+  // Babywelt-Logen immer als letzte Spalten, unabhängig von Alphabet
+  const logen = (data ?? []) as unknown as Loge[]
+  return [...logen].sort((a, b) => {
+    if (a.ist_babywelt !== b.ist_babywelt) return a.ist_babywelt ? 1 : -1
+    return a.name.localeCompare(b.name)
+  })
 }
 
 export async function getReservierungenFuerMonat(

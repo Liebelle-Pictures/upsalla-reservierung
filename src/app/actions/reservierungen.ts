@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
+import { logeIstVerfuegbarFuerSlot } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 import type { ReservierungTyp } from '@/types/reservierung'
@@ -37,6 +38,7 @@ export async function reservierungErstellen(
   const kindGeburtstag = (formData.get('kind_geburtstag') as string | null) || null
   const dsgvo = formData.get('dsgvo') === 'on'
   const notizen = (formData.get('notizen') as string | null)?.trim() || null
+  const angenommenVon = (formData.get('angenommen_von') as string | null)?.trim() || 'KI LENA'
 
   // Validierung
   if (!datum || !logeId || !zeitslot || !typ || !vorname || !nachname || !telefon) {
@@ -47,6 +49,17 @@ export async function reservierungErstellen(
   }
   if (kinderAnzahl < 1) {
     return { fehler: 'Mindestens 1 Kind erforderlich.' }
+  }
+
+  // Loge-spezifische Verfügbarkeitsregel prüfen (z.B. Runde Tische unten: nur Sa/So Slot 1)
+  const { data: logeRegel } = await supabaseAdmin
+    .from('logen')
+    .select('verfuegbarkeit_regel')
+    .eq('id', logeId)
+    .single()
+
+  if (!logeIstVerfuegbarFuerSlot(logeRegel?.verfuegbarkeit_regel ?? null, new Date(datum + 'T00:00:00'), zeitslot)) {
+    return { fehler: 'Diese Loge ist an diesem Tag/Zeitslot nicht verfügbar.' }
   }
 
   // Doppelbelegung prüfen
@@ -136,6 +149,7 @@ export async function reservierungErstellen(
     gesamtbetrag,
     anzahlung_betrag: anzahlungBetrag,
     notizen,
+    angenommen_von: angenommenVon,
     stripe_payment_link: null,
     stripe_payment_intent_id: null,
     aktualisiert_am: new Date().toISOString(),
@@ -290,6 +304,7 @@ export async function reservierungAktualisieren(
   const telefon = (formData.get('telefon') as string).trim()
   const email = (formData.get('email') as string)?.trim() || null
   const kundeId = formData.get('kunde_id') as string
+  const angenommenVon = (formData.get('angenommen_von') as string | null)?.trim() || 'KI LENA'
 
   if (kinderAnzahl < 1) return { fehler: 'Mindestens 1 Kind erforderlich.' }
 
@@ -315,6 +330,7 @@ export async function reservierungAktualisieren(
       gesamtbetrag,
       anzahlung_betrag: anzahlungBetrag,
       notizen,
+      angenommen_von: angenommenVon,
       aktualisiert_am: new Date().toISOString(),
     })
     .eq('id', id)

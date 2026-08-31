@@ -24,3 +24,17 @@ export function istWochenende(datum: Date): boolean {
   const tag = datum.getDay()
   return tag === 0 || tag === 6
 }
+
+// Prüft loge-spezifische Verfügbarkeitsregeln (z.B. "Runde Tische unten" nur Sa/So Slot 1)
+export function logeIstVerfuegbarFuerSlot(
+  verfuegbarkeitRegel: string | null,
+  datum: Date,
+  zeitslot: number,
+): boolean {
+  if (!verfuegbarkeitRegel) return true
+  if (verfuegbarkeitRegel === 'SA_SO_SLOT1') {
+    const tag = datum.getDay()
+    return (tag === 0 || tag === 6) && zeitslot === 1
+  }
+  return true
+}

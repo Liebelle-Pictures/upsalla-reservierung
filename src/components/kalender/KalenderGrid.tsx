@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Loge } from '@/types/loge'
 import type { ZeitslotInfo } from '@/lib/utils/zeitslots'
 import type { Reservierung } from '@/types/reservierung'
+import { logeIstVerfuegbarFuerSlot } from '@/lib/utils/zeitslots'
 import { ReservierungKarte } from './ReservierungKarte'
 import { FreierSlot } from './FreierSlot'
 
@@ -14,18 +15,25 @@ interface LogeKonfig {
   kategorie: 'Jungen' | 'Mädchen' | 'Unisex'
 }
 
+const BABYWELT_FARBE = '#7C3AED'
+
+// Reihenfolge wichtig: "regenbogen" muss vor "einhorn" geprüft werden,
+// sonst würde "Einhorn Regenbogen" die Farbe von "Einhorn Schloss" erben.
 const LOGE_KONFIG: Array<{ match: (n: string) => boolean } & LogeKonfig> = [
   { match: n => n.includes('jungs'),                                farbe: '#2563EB', textfarbe: '#fff', kategorie: 'Jungen'  },
   { match: n => n.includes('spiderman') || n.includes('marvel'),   farbe: '#DC2626', textfarbe: '#fff', kategorie: 'Jungen'  },
   { match: n => n.includes('anna') || n.includes('elsa'),          farbe: '#0284C7', textfarbe: '#fff', kategorie: 'Mädchen' },
+  { match: n => n.includes('regenbogen') || n.includes('märchen'), farbe: '#0D9488', textfarbe: '#fff', kategorie: 'Unisex'  },
   { match: n => n.includes('einhorn'),                              farbe: '#9333EA', textfarbe: '#fff', kategorie: 'Mädchen' },
   { match: n => n.includes('mädchen'),                             farbe: '#DB2777', textfarbe: '#fff', kategorie: 'Mädchen' },
-  { match: n => n.includes('märchen') || n.includes('regenbogen'), farbe: '#0D9488', textfarbe: '#fff', kategorie: 'Unisex'  },
   { match: n => n.includes('safari'),                              farbe: '#D97706', textfarbe: '#fff', kategorie: 'Unisex'  },
+  { match: n => n.includes('bbq') || n.includes('zelt'),           farbe: '#EA580C', textfarbe: '#fff', kategorie: 'Unisex'  },
+  { match: n => n.includes('runde tische'),                        farbe: '#57534E', textfarbe: '#fff', kategorie: 'Unisex'  },
 ]
 
-function getLogeKonfig(name: string): LogeKonfig {
-  const n = name.toLowerCase()
+function getLogeKonfig(loge: Loge): LogeKonfig {
+  if (loge.ist_babywelt) return { farbe: BABYWELT_FARBE, textfarbe: '#fff', kategorie: 'Unisex' }
+  const n = loge.name.toLowerCase()
   return LOGE_KONFIG.find(k => k.match(n)) ?? { farbe: '#6366F1', textfarbe: '#fff', kategorie: 'Unisex' }
 }
 
@@ -40,6 +48,11 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
   const router = useRouter()
   const findeReservierungen = (logeId: string, zeitslot: number) =>
     reservierungen.filter(r => r.loge_id === logeId && r.zeitslot === zeitslot)
+
+  // Erste Babywelt-Spalte markieren für den visuellen Trenner (Logen sind bereits
+  // von getLogen() so sortiert, dass Babywelt-Logen immer zuletzt kommen)
+  const ersteBabyweltIdx = logen.findIndex(l => l.ist_babywelt)
+  const datumObj = new Date(datum + 'T00:00:00')
 
   if (logen.length === 0) {
     return (
@@ -75,8 +88,9 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
         <div />
 
         {/* Logen-Kopfzeilen: Solid-farbig mit weißem Text */}
-        {logen.map(loge => {
-          const cfg = getLogeKonfig(loge.name)
+        {logen.map((loge, idx) => {
+          const cfg = getLogeKonfig(loge)
+          const istTrenner = idx === ersteBabyweltIdx && idx > 0
           return (
             <div
               key={loge.id}
@@ -85,6 +99,8 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
                 background: cfg.farbe,
                 borderRadius: '10px 10px 0 0',
                 boxShadow: `0 2px 8px ${cfg.farbe}40`,
+                marginLeft: istTrenner ? '10px' : undefined,
+                borderLeft: istTrenner ? '4px solid #7C3AED' : undefined,
               }}
             >
               <span style={{ fontWeight: 700, color: cfg.textfarbe, fontSize: '0.85rem', lineHeight: 1.2 }}>
@@ -119,20 +135,30 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
             </div>
 
             {/* Logen-Zellen */}
-            {logen.map(loge => {
-              const cfg = getLogeKonfig(loge.name)
+            {logen.map((loge, idx) => {
+              const cfg = getLogeKonfig(loge)
               const res = findeReservierungen(loge.id, slot.nummer)
+              const istTrenner = idx === ersteBabyweltIdx && idx > 0
+              const verfuegbarRegel = logeIstVerfuegbarFuerSlot(loge.verfuegbarkeit_regel, datumObj, slot.nummer)
+              const borderStil = loge.ist_babywelt ? 'solid' : 'dashed'
+              const borderOpazitaet = loge.ist_babywelt ? '4D' : '35' // 4D hex ≈ 30%
               return (
                 <div
                   key={`${loge.id}-${slot.nummer}`}
                   className="rounded-xl h-full"
                   style={{
                     background: `${cfg.farbe}08`,
-                    border: res.length === 0 ? `2px dashed ${cfg.farbe}35` : 'none',
+                    border: res.length === 0 ? `2px ${borderStil} ${cfg.farbe}${borderOpazitaet}` : 'none',
+                    marginLeft: istTrenner ? '10px' : undefined,
                   }}
                 >
-                  {res.length === 0 && (
+                  {res.length === 0 && verfuegbarRegel && (
                     <FreierSlot datum={datum} logeId={loge.id} zeitslot={slot.nummer} farbe={cfg.farbe} />
+                  )}
+                  {res.length === 0 && !verfuegbarRegel && (
+                    <div className="flex items-center justify-center h-full text-center px-2" style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>
+                      Nicht verfügbar
+                    </div>
                   )}
                   {res.length === 1 && res[0].kinder_anzahl >= 10 && (
                     <ReservierungKarte reservierung={res[0]} />
