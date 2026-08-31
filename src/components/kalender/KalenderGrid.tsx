@@ -37,6 +37,13 @@ function getLogeKonfig(loge: Loge): LogeKonfig {
   return LOGE_KONFIG.find(k => k.match(n)) ?? { farbe: '#6366F1', textfarbe: '#fff', kategorie: 'Unisex' }
 }
 
+// Sonderloge = Babywelt ODER flexible Kapazität (BBQ Zelt) ODER eigene
+// Verfügbarkeitsregel (Runde Tische unten) — keine neue Spalte nötig,
+// nutzt vorhandene Flags.
+function istSonderloge(loge: Loge): boolean {
+  return loge.ist_babywelt || loge.kapazitaet_flexibel || loge.verfuegbarkeit_regel !== null
+}
+
 interface Props {
   datum: string
   logen: Loge[]
@@ -44,26 +51,21 @@ interface Props {
   zeitslots: ZeitslotInfo[]
 }
 
-export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props) {
+interface ReiheProps {
+  datum: string
+  logen: Loge[]
+  reservierungen: Reservierung[]
+  zeitslots: ZeitslotInfo[]
+}
+
+function LogenReihe({ datum, logen, reservierungen, zeitslots }: ReiheProps) {
   const router = useRouter()
   const findeReservierungen = (logeId: string, zeitslot: number) =>
     reservierungen.filter(r => r.loge_id === logeId && r.zeitslot === zeitslot)
 
-  // Erste Babywelt-Spalte markieren für den visuellen Trenner (Logen sind bereits
-  // von getLogen() so sortiert, dass Babywelt-Logen immer zuletzt kommen)
+  // Erste Babywelt-Spalte markieren für den visuellen Trenner
   const ersteBabyweltIdx = logen.findIndex(l => l.ist_babywelt)
   const datumObj = new Date(datum + 'T00:00:00')
-
-  if (logen.length === 0) {
-    return (
-      <div
-        className="flex items-center justify-center rounded-2xl py-24"
-        style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)' }}
-      >
-        <p style={{ color: 'var(--color-text-muted)' }}>Keine Logen gefunden.</p>
-      </div>
-    )
-  }
 
   return (
     <div
@@ -209,6 +211,44 @@ export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props)
           </Fragment>
         ))}
       </div>
+    </div>
+  )
+}
+
+export function KalenderGrid({ datum, logen, reservierungen, zeitslots }: Props) {
+  if (logen.length === 0) {
+    return (
+      <div
+        className="flex items-center justify-center rounded-2xl py-24"
+        style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)' }}
+      >
+        <p style={{ color: 'var(--color-text-muted)' }}>Keine Logen gefunden.</p>
+      </div>
+    )
+  }
+
+  // Hauptlogen oben, Sonder-/Babywelt-Logen (BBQ Zelt, Runde Tische unten,
+  // Babywelt) als eigene Reihe darunter — klare visuelle Trennung wichtig/speziell
+  const hauptLogen = logen.filter(l => !istSonderloge(l))
+  const sonderLogen = logen.filter(istSonderloge)
+
+  return (
+    <div className="flex flex-col gap-5">
+      {hauptLogen.length > 0 && (
+        <LogenReihe datum={datum} logen={hauptLogen} reservierungen={reservierungen} zeitslots={zeitslots} />
+      )}
+
+      {sonderLogen.length > 0 && (
+        <div>
+          <div
+            className="mb-2 px-1 text-xs font-bold uppercase tracking-widest"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            Sonder- &amp; Babywelt-Logen
+          </div>
+          <LogenReihe datum={datum} logen={sonderLogen} reservierungen={reservierungen} zeitslots={zeitslots} />
+        </div>
+      )}
     </div>
   )
 }
