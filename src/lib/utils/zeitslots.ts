@@ -25,6 +25,15 @@ export function istWochenende(datum: Date): boolean {
   return tag === 0 || tag === 6
 }
 
+// Einzige Quelle der Wahrheit für "welche Uhrzeit bedeutet zeitslot X an diesem Tag".
+// WICHTIG: zeitslot=1 bedeutet an einem normalen Wochentag 15:00–19:00 (einziger Slot),
+// aber an einem teuren Tag (Wochenende/Feiertag/Ferien) 10:30–14:30 — die Slot-NUMMER
+// allein sagt nichts über die Uhrzeit aus, man braucht immer auch istTeuerterTag.
+export function zeitslotZeitraum(zeitslot: number, istTeuerterTag: boolean): { start: string; ende: string } {
+  if (istTeuerterTag && zeitslot === 1) return { start: '10:30', ende: '14:30' }
+  return { start: '15:00', ende: '19:00' }
+}
+
 // Prüft loge-spezifische Verfügbarkeitsregeln (z.B. "Runde Tische unten" nur Sa/So Slot 1)
 export function logeIstVerfuegbarFuerSlot(
   verfuegbarkeitRegel: string | null,

@@ -1,5 +1,6 @@
 import { getReservierungenMitDetails } from '@/lib/supabase/queries'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { DatumNavigator } from '@/components/kalender/DatumNavigator'
 import { TagesuebersichtTabelle } from '@/components/tagesuebersicht/TagesuebersichtTabelle'
 import { DruckenButton } from '@/components/tagesuebersicht/DruckenButton'
@@ -13,6 +14,7 @@ export default async function TagesuebersichtPage({ searchParams }: Props) {
   const datum = datumParam ?? new Date().toISOString().slice(0, 10)
 
   const reservierungen = await getReservierungenMitDetails(datum, WUPPERTAL_STANDORT_ID)
+  const teuerterTag = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
 
   const datumAnzeige = new Date(datum + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
@@ -64,6 +66,7 @@ export default async function TagesuebersichtPage({ searchParams }: Props) {
 
         <TagesuebersichtTabelle
           reservierungen={reservierungen as unknown as Parameters<typeof TagesuebersichtTabelle>[0]['reservierungen']}
+          istTeuerterTag={teuerterTag}
         />
       </div>
     </>

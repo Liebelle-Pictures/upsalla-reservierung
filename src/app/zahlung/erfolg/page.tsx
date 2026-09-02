@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { sendeEmail } from '@/lib/resend/client'
 import { buchungsbestaetigungHtml } from '@/lib/resend/templates'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
+import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,8 +44,10 @@ export default async function ZahlungErfolgPage({ searchParams }: Props) {
         datumAnzeige = new Date(res.datum + 'T00:00:00').toLocaleDateString('de-DE', {
           weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
         })
-        const zeitslotText = res.zeitslot === 1 ? 'Slot 1 — 10:30–14:30 Uhr' : 'Slot 2 — 15:00–19:00 Uhr'
-        const zeitAnzeige = res.zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
+        const weekend = await istPreisteuerterTag(new Date(res.datum + 'T00:00:00'))
+        const { start: erfolgSlotStart, ende: erfolgSlotEnde } = zeitslotZeitraum(res.zeitslot, weekend)
+        const zeitslotText = `Slot ${res.zeitslot} — ${erfolgSlotStart}–${erfolgSlotEnde} Uhr`
+        const zeitAnzeige = `${erfolgSlotStart}–${erfolgSlotEnde}`
 
         // E-Mail aus Stripe Checkout übernehmen (Kunde hat sie beim Bezahlen eingegeben)
         const stripeEmail = session.customer_details?.email

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { reservierungStornieren, barzahlungBestaetigen } from '@/app/actions/reservierungen'
+import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 
 /* ── Status-Konfiguration ── */
 const STATUS_CONFIG = {
@@ -65,6 +66,7 @@ interface Props {
     kunden: { vorname: string; nachname: string; telefon: string; email: string | null } | null
     logen: { name: string; ist_babywelt?: boolean } | null
   }
+  istTeuerterTag: boolean
 }
 
 /* ── Label-Wert-Zeile ── */
@@ -140,7 +142,7 @@ function Divider() {
 }
 
 /* ── Haupt-Komponente ── */
-export function ReservierungDetailView({ reservierung: r }: Props) {
+export function ReservierungDetailView({ reservierung: r, istTeuerterTag }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [stornoOffen, setStornoOffen] = useState(false)
@@ -172,7 +174,8 @@ export function ReservierungDetailView({ reservierung: r }: Props) {
   const vollbetragFaellig = r.status === 'BESTAETIGT_BEZAHLT' && Number(r.anzahlung_betrag) === 0
   const cfg = vollbetragFaellig ? VOLLBETRAG_CONFIG : STATUS_CONFIG[r.status]
   const logeFarbe = r.logen ? getLogeFarbe(r.logen.name, r.logen.ist_babywelt) : { farbe: '#6366F1', kategorie: 'Unisex' }
-  const zeitslotText = r.zeitslot === 1 ? 'Slot 1 — 10:30–14:30 Uhr' : 'Slot 2 — 15:00–19:00 Uhr'
+  const { start: detailSlotStart, ende: detailSlotEnde } = zeitslotZeitraum(r.zeitslot, istTeuerterTag)
+  const zeitslotText = `Slot ${r.zeitslot} — ${detailSlotStart}–${detailSlotEnde} Uhr`
   const kundenName = r.kunden ? `${r.kunden.vorname} ${r.kunden.nachname}` : '—'
 
   return (

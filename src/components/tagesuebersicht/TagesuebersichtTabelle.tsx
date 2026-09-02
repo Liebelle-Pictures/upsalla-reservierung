@@ -1,3 +1,5 @@
+import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
+
 const STATUSLABEL: Record<string, string> = {
   BESTAETIGT_BEZAHLT:    'Bezahlt',
   BESTAETIGT_AUSSTEHEND: 'Ausstehend',
@@ -15,11 +17,6 @@ const STATUSFARBEN: Record<string, { color: string; bg: string }> = {
 // Altbuchung (Import): als BEZAHLT markiert, aber ohne echte Anzahlung — voller Betrag vor Ort fällig
 const VOLLBETRAG_LABEL = '100% vor Ort'
 const VOLLBETRAG_FARBE = { color: '#9A3412', bg: '#FFF7ED' }
-
-const ZEITSLOTS: Record<number, string> = {
-  1: '10:30 – 14:30 Uhr',
-  2: '15:00 – 19:00 Uhr',
-}
 
 // Babywelt: entsättigte, "babyhafte" Töne, nach Junge/Mädchen differenziert
 const BABYWELT_JUNGE_FARBE    = '#6E8FB8'
@@ -42,9 +39,10 @@ interface Reservierung {
 
 interface Props {
   reservierungen: Reservierung[]
+  istTeuerterTag: boolean
 }
 
-export function TagesuebersichtTabelle({ reservierungen }: Props) {
+export function TagesuebersichtTabelle({ reservierungen, istTeuerterTag }: Props) {
   if (reservierungen.length === 0) {
     return (
       <div className="text-center py-16 print:py-8" style={{ color: 'var(--color-text-muted)' }}>
@@ -60,12 +58,13 @@ export function TagesuebersichtTabelle({ reservierungen }: Props) {
     if (slot.length === 0) return null
     // Babywelt-Reservierungen immer zuletzt auflisten
     const sortiert = [...slot].sort((a, b) => Number(!!a.logen?.ist_babywelt) - Number(!!b.logen?.ist_babywelt))
+    const { start: slotStart, ende: slotEnde } = zeitslotZeitraum(nummer, istTeuerterTag)
     return (
       <div className="mb-8 print-slot">
         {/* Slot-Überschrift */}
         <h2 className="text-xs font-bold uppercase tracking-widest mb-3 print-slot-title"
           style={{ color: 'var(--color-text-muted)' }}>
-          Slot {nummer} — {ZEITSLOTS[nummer]}
+          Slot {nummer} — {slotStart} – {slotEnde} Uhr
         </h2>
 
         <div className="overflow-hidden rounded-xl print-table-wrap"

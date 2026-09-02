@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
-import { logeIstVerfuegbarFuerSlot } from '@/lib/utils/zeitslots'
+import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 import type { ReservierungTyp } from '@/types/reservierung'
@@ -228,8 +228,9 @@ export async function reservierungErstellen(
   const datumAnzeige = new Date(datum + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
-  const zeitAnzeige = zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
-  const zeitslotText = zeitslot === 1 ? 'Slot 1 — 10:30–14:30 Uhr' : 'Slot 2 — 15:00–19:00 Uhr'
+  const { start: slotStart, ende: slotEnde } = zeitslotZeitraum(zeitslot, weekend)
+  const zeitAnzeige = `${slotStart}–${slotEnde}`
+  const zeitslotText = `Slot ${zeitslot} — ${slotStart}–${slotEnde} Uhr`
 
   // Bestätigungs-SMS an Kunde senden
   try {
@@ -427,8 +428,10 @@ export async function reservierungStornieren(
   const datumAnzeige = terminDatum.toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
-  const zeitAnzeige = res.zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
-  const zeitslotText = res.zeitslot === 1 ? 'Slot 1 — 10:30–14:30 Uhr' : 'Slot 2 — 15:00–19:00 Uhr'
+  const weekendStorno = await istPreisteuerterTag(terminDatum)
+  const { start: stornoSlotStart, ende: stornoSlotEnde } = zeitslotZeitraum(res.zeitslot, weekendStorno)
+  const zeitAnzeige = `${stornoSlotStart}–${stornoSlotEnde}`
+  const zeitslotText = `Slot ${res.zeitslot} — ${stornoSlotStart}–${stornoSlotEnde} Uhr`
 
   // Storno-SMS
   if (kunde?.telefon) {

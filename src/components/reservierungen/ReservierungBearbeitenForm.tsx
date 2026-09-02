@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { reservierungAktualisieren, type BearbeitenState } from '@/app/actions/reservierungen'
 import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene, ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE } from '@/lib/utils/preise'
+import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 import Link from 'next/link'
 
 const TYP_OPTIONEN = [
@@ -48,6 +49,7 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
   const datumAnzeige = new Date(r.datum + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
+  const { start: slotStart, ende: slotEnde } = zeitslotZeitraum(r.zeitslot, weekend)
 
   return (
     <form action={action} className="space-y-6 max-w-xl">
@@ -60,7 +62,7 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
       <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-1">
         <div><span className="font-semibold text-gray-800">Loge:</span> {r.logen?.name}</div>
         <div><span className="font-semibold text-gray-800">Datum:</span> {datumAnzeige}</div>
-        <div><span className="font-semibold text-gray-800">Zeitslot:</span> {r.zeitslot === 1 ? '10:30 – 14:30' : '15:00 – 19:00'} Uhr</div>
+        <div><span className="font-semibold text-gray-800">Zeitslot:</span> {slotStart} – {slotEnde} Uhr</div>
         <p className="text-xs text-gray-400 pt-1">Loge, Datum und Zeitslot können nicht geändert werden.</p>
       </div>
 

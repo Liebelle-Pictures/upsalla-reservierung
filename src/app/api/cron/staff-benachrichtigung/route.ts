@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeEmail } from '@/lib/resend/client'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
+import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
   }
 
   // E-Mail mit allen offenen Reservierungen zusammenstellen
-  const zeilen = reservierungen.map(r => {
+  const zeilen = (await Promise.all(reservierungen.map(async r => {
     const kundeRaw = r.kunden
     const kunde = (Array.isArray(kundeRaw) ? kundeRaw[0] : kundeRaw) as { vorname: string; nachname: string; telefon: string } | null
     const logeRaw = r.logen
@@ -41,7 +43,9 @@ export async function GET(request: NextRequest) {
     const datumAnzeige = new Date(r.datum + 'T00:00:00').toLocaleDateString('de-DE', {
       weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
     })
-    const zeitAnzeige = r.zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
+    const weekend = await istPreisteuerterTag(new Date(r.datum + 'T00:00:00'))
+    const { start: staffSlotStart, ende: staffSlotEnde } = zeitslotZeitraum(r.zeitslot, weekend)
+    const zeitAnzeige = `${staffSlotStart}–${staffSlotEnde}`
     const restbetrag = (Number(r.gesamtbetrag) - Number(r.anzahlung_betrag)).toFixed(2)
     const erstelltAm = new Date(r.erstellt_am).toLocaleDateString('de-DE', {
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -56,7 +60,7 @@ export async function GET(request: NextRequest) {
         <td style="padding:10px 12px;font-weight:700;color:#DC2626;">${restbetrag} €</td>
         <td style="padding:10px 12px;font-size:0.8rem;color:#94A3B8;">${erstelltAm}</td>
       </tr>`
-  }).join('')
+  }))).join('')
 
   const html = `
     <!DOCTYPE html>

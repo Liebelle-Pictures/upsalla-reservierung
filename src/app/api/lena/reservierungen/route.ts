@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
-import { logeIstVerfuegbarFuerSlot } from '@/lib/utils/zeitslots'
+import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 
@@ -210,7 +210,8 @@ export async function POST(request: NextRequest) {
   const datumAnzeige = new Date(datumKorrigiert + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
-  const zeitAnzeige = zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
+  const { start: lenaSlotStart, ende: lenaSlotEnde } = zeitslotZeitraum(zeitslot, weekend)
+  const zeitAnzeige = `${lenaSlotStart}–${lenaSlotEnde}`
 
   let zahlungsLink: string | null = null
   try {
@@ -273,16 +274,22 @@ export async function GET(request: NextRequest) {
     .gte('datum', new Date().toISOString().slice(0, 10))
     .order('datum', { ascending: true })
 
-  return NextResponse.json({
-    kunde: { vorname: kunde.vorname, nachname: kunde.nachname },
-    reservierungen: (reservierungen ?? []).map((r: Record<string, unknown>) => ({
+  const reservierungenFormatiert = await Promise.all((reservierungen ?? []).map(async (r: Record<string, unknown>) => {
+    const weekend = await istPreisteuerterTag(new Date((r.datum as string) + 'T00:00:00'))
+    const { start, ende } = zeitslotZeitraum(r.zeitslot as number, weekend)
+    return {
       id: r.id,
       datum: r.datum,
-      zeitslot: r.zeitslot === 1 ? '10:30–14:30 Uhr' : '15:00–19:00 Uhr',
+      zeitslot: `${start}–${ende} Uhr`,
       status: r.status,
       typ: r.typ,
       kinder_anzahl: r.kinder_anzahl,
       loge: (r.logen as { name: string } | null)?.name,
-    })),
+    }
+  }))
+
+  return NextResponse.json({
+    kunde: { vorname: kunde.vorname, nachname: kunde.nachname },
+    reservierungen: reservierungenFormatiert,
   })
 }

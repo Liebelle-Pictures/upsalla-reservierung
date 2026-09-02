@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
+import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,16 +47,22 @@ export async function POST(request: NextRequest) {
     .gte('datum', heuteDatum)
     .order('datum', { ascending: true })
 
-  return NextResponse.json({
-    kunde: { vorname: kunde.vorname, nachname: kunde.nachname },
-    reservierungen: (reservierungen ?? []).map((r: Record<string, unknown>) => ({
+  const reservierungenFormatiert = await Promise.all((reservierungen ?? []).map(async (r: Record<string, unknown>) => {
+    const weekend = await istPreisteuerterTag(new Date((r.datum as string) + 'T00:00:00'))
+    const { start, ende } = zeitslotZeitraum(r.zeitslot as number, weekend)
+    return {
       id: r.id,
       datum: r.datum,
-      zeitslot: r.zeitslot === 1 ? '10:30-14:30 Uhr' : '15:00-19:00 Uhr',
+      zeitslot: `${start}-${ende} Uhr`,
       status: r.status,
       typ: r.typ,
       kinder_anzahl: r.kinder_anzahl,
       loge: (r.logen as { name: string } | null)?.name,
-    })),
+    }
+  }))
+
+  return NextResponse.json({
+    kunde: { vorname: kunde.vorname, nachname: kunde.nachname },
+    reservierungen: reservierungenFormatiert,
   })
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
+import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +33,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ gesendet: 0, hinweis: `Keine Reservierungen am ${zieldatum}` })
   }
 
+  // Alle Reservierungen dieses Crons haben dasselbe Zieldatum — einmal berechnen reicht
+  const weekend = await istPreisteuerterTag(new Date(zieldatum + 'T00:00:00'))
+
   let gesendet = 0
   const fehler: string[] = []
 
@@ -43,7 +48,8 @@ export async function GET(request: NextRequest) {
     const datumAnzeige = new Date(res.datum + 'T00:00:00').toLocaleDateString('de-DE', {
       weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
     })
-    const zeitAnzeige = res.zeitslot === 1 ? '10:30–14:30' : '15:00–19:00'
+    const { start: remStart, ende: remEnde } = zeitslotZeitraum(res.zeitslot, weekend)
+    const zeitAnzeige = `${remStart}–${remEnde}`
     const restbetrag = (Number(res.gesamtbetrag) - Number(res.anzahlung_betrag)).toFixed(2)
 
     const smsText = res.status === 'BESTAETIGT_BEZAHLT'
