@@ -195,10 +195,11 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
 
       {/* Angenommen von */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Angenommen von</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Angenommen von *</label>
         <input
           name="angenommen_von"
           defaultValue={r.angenommen_von}
+          required
           className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>

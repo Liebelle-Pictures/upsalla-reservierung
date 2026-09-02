@@ -169,8 +169,13 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
 
       {/* Angenommen von */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Angenommen von</label>
-        <input name="angenommen_von" defaultValue="KI LENA" className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <label className="block text-sm font-medium text-gray-700 mb-1">Angenommen von *</label>
+        <input
+          name="angenommen_von"
+          required
+          placeholder="Name des Mitarbeiters (z.B. Anna)"
+          className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       </div>
 
       {/* DSGVO */}

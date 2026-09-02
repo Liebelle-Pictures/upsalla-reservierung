@@ -38,7 +38,9 @@ export async function reservierungErstellen(
   const kindGeburtstag = (formData.get('kind_geburtstag') as string | null) || null
   const dsgvo = formData.get('dsgvo') === 'on'
   const notizen = (formData.get('notizen') as string | null)?.trim() || null
-  const angenommenVon = (formData.get('angenommen_von') as string | null)?.trim() || 'KI LENA'
+  // Fällt NIE auf "KI LENA" zurück — dieses Formular wird immer von eingeloggtem
+  // Personal ausgefüllt, nie von Lena. Fallback ist der Account des Personals.
+  const angenommenVon = (formData.get('angenommen_von') as string | null)?.trim() || user.email || 'Personal'
 
   // Validierung
   if (!datum || !logeId || !zeitslot || !typ || !vorname || !nachname || !telefon) {
@@ -192,6 +194,7 @@ export async function reservierungErstellen(
   }
 
   // Stripe Anzahlungs-Link generieren (nur für Geburtstag-Typen)
+  let stripeUrl: string | null = null
   if (typ === 'GEBURTSTAG' || typ === 'BABYWELT_GEBURTSTAG') {
     try {
       const loge = await supabaseAdmin
@@ -202,7 +205,7 @@ export async function reservierungErstellen(
 
       const beschreibung = `Anzahlung Geburtstag – ${loge.data?.name ?? 'Loge'}, ${new Date(datum + 'T00:00:00').toLocaleDateString('de-DE')}`
 
-      const stripeUrl = await erstelleAnzahlungsSession({
+      stripeUrl = await erstelleAnzahlungsSession({
         betragCent: Math.round(anzahlungBetrag * 100),
         reservierungId: reservierung.id,
         beschreibung,
@@ -232,13 +235,13 @@ export async function reservierungErstellen(
   const zeitAnzeige = `${slotStart}–${slotEnde}`
   const zeitslotText = `Slot ${zeitslot} — ${slotStart}–${slotEnde} Uhr`
 
-  // Bestätigungs-SMS an Kunde senden
+  // Bestätigungs-SMS an Kunde senden — mit Zahlungslink, falls einer generiert wurde
   try {
     const { sendeSMS } = await import('@/lib/twilio/client')
-    await sendeSMS(
-      telefon,
-      `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bei Fragen: 0202 2623339`,
-    )
+    const smsText = stripeUrl
+      ? `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bitte hier bezahlen um den Termin zu sichern: ${stripeUrl}`
+      : `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bei Fragen: 0202 2623339`
+    await sendeSMS(telefon, smsText)
   } catch (err) {
     console.error('[Twilio] SMS-Fehler:', err)
   }
@@ -305,7 +308,8 @@ export async function reservierungAktualisieren(
   const telefon = (formData.get('telefon') as string).trim()
   const email = (formData.get('email') as string)?.trim() || null
   const kundeId = formData.get('kunde_id') as string
-  const angenommenVon = (formData.get('angenommen_von') as string | null)?.trim() || 'KI LENA'
+  // Fällt NIE auf "KI LENA" zurück — dieses Formular wird immer von eingeloggtem Personal ausgefüllt
+  const angenommenVon = (formData.get('angenommen_von') as string | null)?.trim() || user.email || 'Personal'
 
   if (kinderAnzahl < 1) return { fehler: 'Mindestens 1 Kind erforderlich.' }
 
