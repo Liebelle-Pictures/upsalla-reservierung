@@ -49,7 +49,7 @@ async function handleVerfuegbarkeit(datumRaw: string) {
 
   const { data: logen } = await supabaseAdmin
     .from('logen')
-    .select('id, name, ist_babywelt, kapazitaet_flexibel, verfuegbarkeit_regel')
+    .select('id, name, ist_babywelt, kapazitaet_flexibel, verfuegbarkeit_regel, max_kinder')
     .eq('standort_id', WUPPERTAL_STANDORT_ID)
     .eq('aktiv', true)
     .order('name')
@@ -82,28 +82,29 @@ async function handleVerfuegbarkeit(datumRaw: string) {
     max_kinder: number | null
   }
 
-  const verfuegbar: VerfuegbarSlot[] = (logen ?? []).flatMap((loge: { id: string; name: string; ist_babywelt: boolean; kapazitaet_flexibel: boolean; verfuegbarkeit_regel: string | null }) =>
+  const verfuegbar: VerfuegbarSlot[] = (logen ?? []).flatMap((loge: { id: string; name: string; ist_babywelt: boolean; kapazitaet_flexibel: boolean; verfuegbarkeit_regel: string | null; max_kinder: number }) =>
     slots.flatMap((s): VerfuegbarSlot[] => {
       // Loge-spezifische Verfügbarkeitsregel (z.B. Runde Tische unten: nur Sa/So Slot 1)
       if (!logeIstVerfuegbarFuerSlot(loge.verfuegbarkeit_regel, datumObj, s.nummer)) return []
 
       const key = `${loge.id}-${s.nummer}`
       const b = belegMap.get(key)
+      const kapazitaet = loge.max_kinder ?? 16
 
-      // Flexible Kapazität (z.B. BBQ Zelt): kein fester 20er-Deckel, nur "schon belegt" blockiert
+      // Flexible Kapazität (z.B. BBQ Zelt): kein fester Deckel, nur "schon belegt" blockiert
       if (loge.kapazitaet_flexibel) {
         if (b && b.anzahl >= 1) return []
         return [{ loge_id: loge.id, loge_name: loge.name, ist_babywelt: loge.ist_babywelt, zeitslot: s.nummer, uhrzeit: `${s.start} - ${s.ende} Uhr`, teil_belegt: false, max_kinder: null }]
       }
 
       // Vollständig frei
-      if (!b) return [{ loge_id: loge.id, loge_name: loge.name, ist_babywelt: loge.ist_babywelt, zeitslot: s.nummer, uhrzeit: `${s.start} - ${s.ende} Uhr`, teil_belegt: false, max_kinder: 20 }]
+      if (!b) return [{ loge_id: loge.id, loge_name: loge.name, ist_babywelt: loge.ist_babywelt, zeitslot: s.nummer, uhrzeit: `${s.start} - ${s.ende} Uhr`, teil_belegt: false, max_kinder: kapazitaet }]
 
       // Bereits 2 Gruppen oder exklusive Gruppe (≥10 Kinder) → voll belegt
       if (b.anzahl >= 2 || b.kinder >= 10) return []
 
       // Halbe Loge frei (erste Gruppe hat <10 Kinder, Platz für 2. Gruppe)
-      const maxWeitere = 20 - b.kinder
+      const maxWeitere = kapazitaet - b.kinder
       if (maxWeitere >= 6) return [{ loge_id: loge.id, loge_name: loge.name, ist_babywelt: loge.ist_babywelt, zeitslot: s.nummer, uhrzeit: `${s.start} - ${s.ende} Uhr`, teil_belegt: true, bereits_kinder: b.kinder, max_kinder: maxWeitere }]
 
       return []

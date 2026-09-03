@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { reservierungAktualisieren, type BearbeitenState } from '@/app/actions/reservierungen'
-import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene, ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE } from '@/lib/utils/preise'
+import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene, ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE, MINDEST_KINDER_ABRECHNUNG } from '@/lib/utils/preise'
 import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 import Link from 'next/link'
 
@@ -155,8 +155,11 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
       {/* Preisberechnung */}
       <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border)' }} className="space-y-2 text-sm">
         <div className="flex justify-between text-gray-600">
-          <span>{kinderAnzahl} Kinder × {kindPreisProPerson.toFixed(2)} €</span>
-          <span>{(kinderAnzahl * kindPreisProPerson).toFixed(2)} €</span>
+          <span>
+            {Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG)} Kinder × {kindPreisProPerson.toFixed(2)} €
+            {kinderAnzahl < MINDEST_KINDER_ABRECHNUNG && ` (Mindestpreis für ${MINDEST_KINDER_ABRECHNUNG})`}
+          </span>
+          <span>{(Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG) * kindPreisProPerson).toFixed(2)} €</span>
         </div>
         {erwachseneAnzahl > 0 && (
           <>

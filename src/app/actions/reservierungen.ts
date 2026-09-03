@@ -53,41 +53,56 @@ export async function reservierungErstellen(
     return { fehler: 'Mindestens 1 Kind erforderlich.' }
   }
 
-  // Loge-spezifische Verfügbarkeitsregel prüfen (z.B. Runde Tische unten: nur Sa/So Slot 1)
-  const { data: logeRegel } = await supabaseAdmin
+  // Loge-Info laden: Verfügbarkeitsregel + reale Kapazität
+  const { data: logeInfo } = await supabaseAdmin
     .from('logen')
-    .select('verfuegbarkeit_regel')
+    .select('verfuegbarkeit_regel, max_kinder, kapazitaet_flexibel')
     .eq('id', logeId)
     .single()
 
-  if (!logeIstVerfuegbarFuerSlot(logeRegel?.verfuegbarkeit_regel ?? null, new Date(datum + 'T00:00:00'), zeitslot)) {
+  if (!logeIstVerfuegbarFuerSlot(logeInfo?.verfuegbarkeit_regel ?? null, new Date(datum + 'T00:00:00'), zeitslot)) {
     return { fehler: 'Diese Loge ist an diesem Tag/Zeitslot nicht verfügbar.' }
   }
 
-  // Doppelbelegung prüfen
-  const { data: aktiveBelegungen } = await supabaseAdmin
-    .from('reservierungen')
-    .select('kinder_anzahl')
-    .eq('loge_id', logeId)
-    .eq('datum', datum)
-    .eq('zeitslot', zeitslot)
-    .neq('status', 'STORNIERT')
+  // Doppelbelegung/Kapazität prüfen — gilt nicht für Gruppen (Kita/Schule) oder interne Sperrungen
+  const logeKapazitaetRelevant = typ !== 'GRUPPE' && typ !== 'INTERN'
 
-  const belegungen = aktiveBelegungen ?? []
-  const bereitsKinder = belegungen.reduce((s, r) => s + r.kinder_anzahl, 0)
+  if (logeKapazitaetRelevant) {
+    const { data: aktiveBelegungen } = await supabaseAdmin
+      .from('reservierungen')
+      .select('kinder_anzahl')
+      .eq('loge_id', logeId)
+      .eq('datum', datum)
+      .eq('zeitslot', zeitslot)
+      .neq('status', 'STORNIERT')
 
-  if (belegungen.length >= 2) {
-    return { fehler: 'Dieser Slot ist bereits mit zwei Gruppen belegt.' }
-  }
-  if (belegungen.length === 1) {
-    if (belegungen[0].kinder_anzahl >= 10) {
-      return { fehler: 'Diese Loge ist für diesen Slot exklusiv belegt (10+ Kinder).' }
-    }
-    if (kinderAnzahl >= 10) {
-      return { fehler: `In dieser Loge gibt es bereits eine Gruppe mit ${belegungen[0].kinder_anzahl} Kindern. Exklusive Buchung nicht möglich.` }
-    }
-    if (bereitsKinder + kinderAnzahl > 20) {
-      return { fehler: `In dieser Loge sind bereits ${bereitsKinder} Kinder gebucht. Maximal ${20 - bereitsKinder} weitere möglich.` }
+    const belegungen = aktiveBelegungen ?? []
+    const bereitsKinder = belegungen.reduce((s, r) => s + r.kinder_anzahl, 0)
+
+    if (logeInfo?.kapazitaet_flexibel) {
+      // z.B. BBQ Zelt: keine feste Obergrenze, aber nur eine Gruppe gleichzeitig
+      if (belegungen.length >= 1) {
+        return { fehler: 'Dieser Slot ist bereits belegt.' }
+      }
+    } else {
+      const maxKinder = logeInfo?.max_kinder ?? 16
+      if (belegungen.length >= 2) {
+        return { fehler: 'Dieser Slot ist bereits mit zwei Gruppen belegt.' }
+      }
+      if (belegungen.length === 1) {
+        if (belegungen[0].kinder_anzahl >= 10) {
+          return { fehler: 'Diese Loge ist für diesen Slot exklusiv belegt (10+ Kinder).' }
+        }
+        if (kinderAnzahl >= 10) {
+          return { fehler: `In dieser Loge gibt es bereits eine Gruppe mit ${belegungen[0].kinder_anzahl} Kindern. Exklusive Buchung nicht möglich.` }
+        }
+        if (bereitsKinder + kinderAnzahl > maxKinder) {
+          return { fehler: `In dieser Loge sind bereits ${bereitsKinder} Kinder gebucht. Maximal ${maxKinder - bereitsKinder} weitere möglich.` }
+        }
+      }
+      if (belegungen.length === 0 && kinderAnzahl > maxKinder) {
+        return { fehler: `Diese Loge fasst maximal ${maxKinder} Kinder.` }
+      }
     }
   }
 
