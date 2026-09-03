@@ -42,4 +42,5 @@ next-env.d.ts
 
 # Kundendaten (DSGVO) — nie ins Repo, nur lokal
 Geburtstagskalender_Reservierungen.xlsx
+Geburtstagskalender_Neue_Reservierungen*.xlsx
 Manuelle_Nacherfassung.csv

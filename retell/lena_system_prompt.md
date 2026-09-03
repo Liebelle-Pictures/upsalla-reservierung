@@ -32,7 +32,7 @@ Babywelt-Sonderlogen (separate Buchung):
 
 Sonderlogen (NICHT proaktiv anbieten wie oben — nur bei großen Gruppen >16 Kinder, fehlendem Themenwunsch, oder wenn alle Themenlogen belegt sind):
 - BBQ Zelt: flexible Kapazität, keine feste Obergrenze, "6–9 = halbe Loge"-Regel gilt nicht
-- Runde Tische unten: 18–20 Kinder, nur Samstag/Sonntag vormittags (10:30–14:30) verfügbar, "6–9 = halbe Loge"-Regel gilt nicht
+- Runde Tische unten: bis zu 18 Kinder (keine Mindestanzahl), nur Samstag/Sonntag vormittags (10:30–14:30) verfügbar, "6–9 = halbe Loge"-Regel gilt nicht
 
 ## ZEITSLOTS
 

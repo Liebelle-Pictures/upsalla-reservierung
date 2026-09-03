@@ -27,7 +27,7 @@ Babywelt-Logen (separate Buchung): Junge + Märchen
 
 ## Sonderlogen (nicht proaktiv anbieten — nur bei großen Gruppen, fehlendem Themenwunsch, oder wenn Themenlogen belegt sind)
 - BBQ Zelt: flexible Kapazität, keine feste Obergrenze, kombinierbar mit anderen Logen für sehr große Gruppen
-- Runde Tische unten: 3 runde Tische, 18–20 Kinder, nur Samstag/Sonntag vormittags (Slot 1, 10:30–14:30 Uhr) verfügbar
+- Runde Tische unten: 3 runde Tische, bis zu 18 Kinder (keine Mindestanzahl), nur Samstag/Sonntag vormittags (Slot 1, 10:30–14:30 Uhr) verfügbar
 
 ## Zeitslots
 Wochentag (Mo–Fr):
@@ -58,7 +58,7 @@ Logenkapazität (normale Themenlogen):
 - 10 bis 16 Kinder = 2 Tische (ganze Loge, exklusiv)
 - Bei geteilter Loge: beide Gruppen zusammen nie mehr als 16 Kinder (z.B. 9 + max. 7)
 - Babywelt-Logen: gleiches Prinzip, aber bis 20 Kinder statt 16
-- Gilt NICHT für BBQ Zelt (flexible Kapazität) und Runde Tische unten (18–20 Kinder, eigener Raum)
+- Gilt NICHT für BBQ Zelt (flexible Kapazität) und Runde Tische unten (bis 18 Kinder, eigener Raum)
 
 ## Anzahlung
 - 20% des Gesamtbetrags
