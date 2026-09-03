@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
-import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum } from '@/lib/utils/zeitslots'
+import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 
@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
   const datumKorrigiert = normalisiertDatum(datum)
   if (!datumKorrigiert) {
     return NextResponse.json({ hinweis: 'Datum konnte nicht verarbeitet werden. Bitte nochmal mit dem Kunden bestätigen.' })
+  }
+  if (istGeschlossen(new Date(datumKorrigiert + 'T00:00:00'))) {
+    return NextResponse.json({ hinweis: 'Der Park ist an diesem Tag geschlossen. Bitte ein anderes Datum vorschlagen.' })
   }
 
   // loge_id aus loge_name auflösen falls nötig

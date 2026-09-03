@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { getVerfuegbareSlots, logeIstVerfuegbarFuerSlot } from '@/lib/utils/zeitslots'
+import { getVerfuegbareSlots, logeIstVerfuegbarFuerSlot, istGeschlossen, getSchliesstagName } from '@/lib/utils/zeitslots'
 import { istPreisteuerterTag, getPreisTypLabel } from '@/lib/utils/feiertage'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 
@@ -40,6 +40,15 @@ async function handleVerfuegbarkeit(datumRaw: string) {
   }
 
   const datumObj = new Date(datum + 'T00:00:00')
+
+  if (istGeschlossen(datumObj)) {
+    return NextResponse.json({
+      datum,
+      geschlossen: true,
+      verfuegbar: [],
+      hinweis: `Der Park hat an diesem Tag geschlossen (${getSchliesstagName(datumObj)}). Bitte ein anderes Datum vorschlagen.`,
+    })
+  }
 
   // Preistyp und verfügbare Slots ermitteln (inkl. Feiertage/Ferien)
   const [teuerterTag, preisTyp] = await Promise.all([

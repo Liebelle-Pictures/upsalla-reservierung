@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
-import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum } from '@/lib/utils/zeitslots'
+import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 import type { ReservierungTyp } from '@/types/reservierung'
@@ -51,6 +51,9 @@ export async function reservierungErstellen(
   }
   if (kinderAnzahl < 1) {
     return { fehler: 'Mindestens 1 Kind erforderlich.' }
+  }
+  if (istGeschlossen(new Date(datum + 'T00:00:00'))) {
+    return { fehler: 'Der Park ist an diesem Tag geschlossen — keine Reservierung möglich.' }
   }
 
   // Loge-Info laden: Verfügbarkeitsregel + reale Kapazität

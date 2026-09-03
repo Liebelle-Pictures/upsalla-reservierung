@@ -13,8 +13,24 @@ const SLOTS_WOCHENENDE: ZeitslotInfo[] = [
   { nummer: 2, start: '15:00', ende: '19:00' },
 ]
 
+// Jährlich wiederkehrende Schließtage — der Park ist an diesen Tagen komplett zu,
+// unabhängig von Wochentag/Feiertagsregelung (Silvester, Neujahr)
+const GESCHLOSSENE_TAGE: Array<{ monat: number; tag: number; name: string }> = [
+  { monat: 12, tag: 31, name: 'Silvester' },
+  { monat: 1, tag: 1, name: 'Neujahr' },
+]
+
+export function istGeschlossen(datum: Date): boolean {
+  return GESCHLOSSENE_TAGE.some(g => datum.getMonth() + 1 === g.monat && datum.getDate() === g.tag)
+}
+
+export function getSchliesstagName(datum: Date): string | null {
+  return GESCHLOSSENE_TAGE.find(g => datum.getMonth() + 1 === g.monat && datum.getDate() === g.tag)?.name ?? null
+}
+
 // istTeuerterTag: optionaler Override (inkl. Feiertage/Ferien); ohne Argument → nur Wochenende
 export function getVerfuegbareSlots(datum: Date, istTeuerterTag?: boolean): ZeitslotInfo[] {
+  if (istGeschlossen(datum)) return []
   const tag = datum.getDay()
   const premium = istTeuerterTag ?? (tag === 0 || tag === 6)
   return premium ? SLOTS_WOCHENENDE : SLOTS_WOCHENTAG

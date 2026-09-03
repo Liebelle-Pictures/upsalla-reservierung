@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { getLogen, getReservierungenFuerTag } from '@/lib/supabase/queries'
-import { getVerfuegbareSlots } from '@/lib/utils/zeitslots'
+import { getVerfuegbareSlots, getSchliesstagName } from '@/lib/utils/zeitslots'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { KalenderGrid } from '@/components/kalender/KalenderGrid'
@@ -21,6 +21,21 @@ async function Kalender({ datum }: { datum: string }) {
   ])
 
   const zeitslots = getVerfuegbareSlots(datumObj, teuerterTag)
+
+  if (zeitslots.length === 0) {
+    const schliesstag = getSchliesstagName(datumObj)
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-2 rounded-2xl py-24"
+        style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)' }}
+      >
+        <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)' }}>
+          Geschlossen{schliesstag ? ` — ${schliesstag}` : ''}
+        </p>
+        <p style={{ color: 'var(--color-text-muted)' }}>An diesem Tag sind keine Reservierungen möglich.</p>
+      </div>
+    )
+  }
 
   return (
     <KalenderGrid
