@@ -68,9 +68,11 @@ export async function POST(request: NextRequest) {
             try {
               const { sendeEmail } = await import('@/lib/resend/client')
               const { buchungsbestaetigungHtml } = await import('@/lib/resend/templates')
+              const { erzeugeReservierungICS } = await import('@/lib/utils/ics')
 
               const logeRaw = res.logen
               const loge = (Array.isArray(logeRaw) ? logeRaw[0] : logeRaw) as unknown as { name: string } | null
+              const logeName = loge?.name ?? 'Loge'
 
               const datumAnzeige = new Date(res.datum + 'T00:00:00').toLocaleDateString('de-DE', {
                 weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
@@ -86,13 +88,20 @@ export async function POST(request: NextRequest) {
                   nachname: kunde.nachname,
                   datum: datumAnzeige,
                   zeitslot: `Slot ${res.zeitslot} — ${start}–${ende} Uhr`,
-                  logeName: loge?.name ?? 'Loge',
+                  logeName,
                   kinderAnzahl: res.kinder_anzahl,
                   erwachseneAnzahl: res.erwachsene_anzahl,
                   gesamtbetrag: res.gesamtbetrag,
                   anzahlungBetrag: res.anzahlung_betrag,
                   stripePaymentLink: null, // bereits bezahlt — grüne "bestätigt"-Box statt Zahlungslink
                 }),
+                kalenderAnhang: {
+                  dateiname: 'termin.ics',
+                  inhalt: erzeugeReservierungICS({
+                    reservierungId, datum: res.datum, startZeit: start, endZeit: ende, logeName, vorname: kunde.vorname,
+                  }),
+                  methode: 'REQUEST',
+                },
               })
             } catch (err) {
               console.error('[Stripe Webhook] Nachtraegliche Buchungsbestaetigung fehlgeschlagen:', err)

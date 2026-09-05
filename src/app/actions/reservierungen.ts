@@ -284,6 +284,8 @@ export async function reservierungErstellen(
       const logeData = aktuelleRes?.logen
       const logeName = (Array.isArray(logeData) ? logeData[0] : logeData as unknown as { name: string } | null)?.name ?? 'Loge'
 
+      const { erzeugeReservierungICS } = await import('@/lib/utils/ics')
+
       await sendeEmail({
         an: email,
         betreff: `Buchungsbestätigung – ${datumAnzeige} · Upsalla Kinderpark Wuppertal`,
@@ -299,6 +301,13 @@ export async function reservierungErstellen(
           anzahlungBetrag,
           stripePaymentLink: aktuelleRes?.stripe_payment_link ?? null,
         }),
+        kalenderAnhang: {
+          dateiname: 'termin.ics',
+          inhalt: erzeugeReservierungICS({
+            reservierungId: reservierung.id, datum, startZeit: slotStart, endZeit: slotEnde, logeName, vorname,
+          }),
+          methode: 'REQUEST',
+        },
       })
     } catch (err) {
       console.error('[Resend] E-Mail-Fehler:', err)
@@ -495,6 +504,7 @@ export async function reservierungStornieren(
     try {
       const { sendeEmail } = await import('@/lib/resend/client')
       const { stornobestaetigungHtml } = await import('@/lib/resend/templates')
+      const { erzeugeReservierungICS } = await import('@/lib/utils/ics')
 
       await sendeEmail({
         an: kunde.email,
@@ -507,6 +517,13 @@ export async function reservierungStornieren(
           rueckerstattungBetrag: rueckerstattungBetrag > 0 ? rueckerstattungBetrag : undefined,
           warBezahlt: Boolean(res.stripe_payment_intent_id),
         }),
+        kalenderAnhang: {
+          dateiname: 'termin-storniert.ics',
+          inhalt: erzeugeReservierungICS({
+            reservierungId: id, datum: res.datum, startZeit: stornoSlotStart, endZeit: stornoSlotEnde, logeName: loge?.name ?? 'Loge', vorname: kunde.vorname,
+          }, true),
+          methode: 'CANCEL',
+        },
       })
     } catch (err) {
       console.error('[Resend] Storno-E-Mail-Fehler:', err)
