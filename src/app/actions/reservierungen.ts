@@ -330,17 +330,32 @@ export async function reservierungAktualisieren(
   const angenommenVon = (formData.get('angenommen_von') as string | null)?.trim() || user.email || 'Personal'
 
   if (kinderAnzahl < 1) return { fehler: 'Mindestens 1 Kind erforderlich.' }
+  if (!telefon) return { fehler: 'Telefonnummer ist erforderlich.' }
 
   const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
   const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = weekend ? 27.0 : 23.0
 
-  // Kundendaten aktualisieren
-  await supabaseAdmin
+  // Falls die Nummer geändert wurde: prüfen, ob sie bereits einem ANDEREN Kunden gehört
+  const { data: kollision } = await supabaseAdmin
     .from('kunden')
-    .update({ vorname, nachname, email })
+    .select('id')
+    .eq('telefon', telefon)
+    .neq('id', kundeId)
+    .maybeSingle()
+
+  if (kollision) {
+    return { fehler: `Diese Telefonnummer gehört bereits einem anderen Kunden. Bitte prüfen und ggf. die Kundendatensätze zusammenführen.` }
+  }
+
+  // Kundendaten aktualisieren
+  const { error: kundeError } = await supabaseAdmin
+    .from('kunden')
+    .update({ vorname, nachname, telefon, email })
     .eq('id', kundeId)
+
+  if (kundeError) return { fehler: `Fehler beim Speichern der Kundendaten: ${kundeError.message}` }
 
   // Reservierung aktualisieren
   const { error } = await supabaseAdmin

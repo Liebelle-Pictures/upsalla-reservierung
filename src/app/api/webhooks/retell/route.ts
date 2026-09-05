@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHmac } from 'crypto'
+import { Retell } from 'retell-sdk'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
@@ -7,15 +7,15 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   const payload = await request.text()
 
-  // Signaturprüfung (falls RETELL_WEBHOOK_SECRET gesetzt)
+  // Signaturprüfung (falls RETELL_WEBHOOK_SECRET gesetzt) — offizielle Retell.verify()
+  // nutzen statt eigener HMAC-Implementierung. Frühere handgestrickte Prüfung verglich
+  // base64-HMAC(payload) ohne Timestamp gegen den rohen Header — das entspricht NICHT
+  // Retells Format ("v={timestamp},d={hex_digest}") und schlug dadurch IMMER fehl, sobald
+  // das Secret gesetzt war. Das war die Ursache für den Ausfall der Anruf-Statistik.
   const secret = process.env.RETELL_WEBHOOK_SECRET
   if (secret) {
     const signatur = request.headers.get('x-retell-signature')
-    if (!signatur) {
-      return NextResponse.json({ fehler: 'Keine Signatur' }, { status: 401 })
-    }
-    const erwartet = createHmac('sha256', secret).update(payload).digest('base64')
-    if (signatur !== erwartet) {
+    if (!signatur || !(await Retell.verify(payload, secret, signatur))) {
       return NextResponse.json({ fehler: 'Ungültige Signatur' }, { status: 401 })
     }
   }
@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
   const call = body.call as Record<string, unknown> | undefined
 
   // call_started: Anrufer-Nummer erkennen und als dynamische Variablen zurückgeben
+  // ACHTUNG: from_number ist wegen Rufumleitung vom Festnetz praktisch immer die
+  // Umleitungsnummer, nicht die des Kunden — siehe retell-variablen/route.ts. Deshalb im
+  // Prompt aktuell nicht verwendet.
   if (event === 'call_started') {
     const fromNumber = (call?.from_number as string | undefined) ?? null
     console.log('[Retell] call_started | from_number:', fromNumber)
@@ -42,9 +45,10 @@ export async function POST(request: NextRequest) {
     }
 
     const istMobil = /^\+49(15|16|17)\d/.test(fromNumber)
-    const rest = fromNumber.startsWith('+49') ? fromNumber.slice(3) : fromNumber
+    // Lokales Format (0...) statt international (+49...) — Kunden nennen/bestätigen
+    // Nummern lokal, das +49-Format sorgt nur für Verwirrung und Übertragungsfehler.
     const callerPhone = fromNumber.startsWith('+49')
-      ? `+49 ${rest.slice(0, 3)} ${rest.slice(3)}`
+      ? `0${fromNumber.slice(3)}`
       : fromNumber
 
     return NextResponse.json({

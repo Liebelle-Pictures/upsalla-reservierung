@@ -105,12 +105,13 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
           </div>
         </div>
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Telefon</label>
-          <input type="hidden" name="telefon" value={r.kunden?.telefon ?? ''} />
+          <label className="block text-xs text-gray-600 mb-1">Telefon *</label>
           <input
-            value={r.kunden?.telefon ?? ''}
-            readOnly
-            className="w-full h-12 px-3 border border-gray-200 rounded-lg text-base bg-gray-50 text-gray-500"
+            name="telefon"
+            type="tel"
+            defaultValue={r.kunden?.telefon ?? ''}
+            required
+            className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>

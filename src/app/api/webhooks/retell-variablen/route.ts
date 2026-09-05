@@ -7,17 +7,26 @@ function istDeutschesMobil(nummer: string): boolean {
   return /^\+49(15|16|17)\d/.test(nummer)
 }
 
-// Nummer für Lena lesbar formatieren: +491521234567 → +49 152 1234567
+// Nummer ins lokale Format bringen, das Kunden tatsächlich verwenden: +491521234567 → 01521234567
+// (NICHT im internationalen +49-Format zurückgeben — das verwirrt Anrufer und führt zu
+// Übertragungsfehlern, wenn Lena die Nummer laut vorliest/bestätigt.)
 function formatiereNummer(nummer: string): string {
   if (nummer.startsWith('+49')) {
-    const rest = nummer.slice(3)
-    return `+49 ${rest.slice(0, 3)} ${rest.slice(3)}`
+    return `0${nummer.slice(3)}`
   }
   return nummer
 }
 
 // POST /api/webhooks/retell-variablen
 // Retell ruft diesen Endpoint am Anfang jedes Anrufs auf und erhält dynamische Variablen
+//
+// ACHTUNG: from_number ist NICHT die Nummer des anrufenden Kunden. Der Park nutzt eine
+// Rufumleitung von der Festnetznummer (+492022623339) auf die Twilio-Nummer — einfache
+// PSTN-Umleitung reicht die ursprüngliche Anrufer-ID nicht durch. from_number ist daher
+// praktisch immer die Umleitungsnummer, nie die des Kunden. caller_phone/ist_mobil werden
+// deshalb im Prompt NICHT verwendet (Lena fragt aktiv nach der Nummer). Diese Variablen nur
+// wieder im Prompt verwenden, wenn die Anrufweiterleitung technisch auf echtes SIP-Trunking
+// mit Diversion-Header-Durchreichung umgestellt wird.
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>
   try {
