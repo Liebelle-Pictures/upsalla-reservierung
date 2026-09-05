@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { konstruiereEvent } from '@/lib/stripe/webhooks'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { istPreisteuerterTag } from '@/lib/utils/feiertage'
+import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 
 // Stripe sendet raw body — kein JSON-Parsing durch Next.js
 export const dynamic = 'force-dynamic'
@@ -35,22 +37,67 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', reservierungId)
 
-      // E-Mail aus Stripe Checkout in Kundendatenbank übernehmen
+      // E-Mail aus Stripe Checkout in Kundendatenbank übernehmen — Lena und Personal
+      // erfragen die E-Mail meist gar nicht (fehleranfällig), Stripe verlangt sie aber
+      // beim Bezahlen zwingend. Das ist für viele Buchungen die EINZIGE Gelegenheit,
+      // eine gültige E-Mail zu bekommen (u.a. für die 10%-Geburtstags-Marketingmail
+      // im Google-Sheet-Export).
       const stripeEmail = session.customer_details?.email
       if (stripeEmail) {
         const { data: res } = await supabaseAdmin
           .from('reservierungen')
-          .select('kunde_id')
+          .select('kunde_id, datum, zeitslot, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, kunden(vorname, nachname, email), logen(name)')
           .eq('id', reservierungId)
           .single()
 
         if (res?.kunde_id) {
+          const kunde = (Array.isArray(res.kunden) ? res.kunden[0] : res.kunden) as { vorname: string; nachname: string; email: string | null } | null
+          const warEmailUnbekannt = !kunde?.email
+
           await supabaseAdmin
             .from('kunden')
             .update({ email: stripeEmail })
             .eq('id', res.kunde_id)
 
           console.log(`[Stripe Webhook] E-Mail ${stripeEmail} für Kunde ${res.kunde_id} gespeichert`)
+
+          // Buchungsbestätigung nachträglich verschicken — nur wenn wir die E-Mail vorher
+          // NICHT hatten (sonst wurde die Bestätigung schon bei der Erstellung verschickt,
+          // keine doppelte Mail).
+          if (warEmailUnbekannt && kunde) {
+            try {
+              const { sendeEmail } = await import('@/lib/resend/client')
+              const { buchungsbestaetigungHtml } = await import('@/lib/resend/templates')
+
+              const logeRaw = res.logen
+              const loge = (Array.isArray(logeRaw) ? logeRaw[0] : logeRaw) as unknown as { name: string } | null
+
+              const datumAnzeige = new Date(res.datum + 'T00:00:00').toLocaleDateString('de-DE', {
+                weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+              })
+              const weekend = await istPreisteuerterTag(new Date(res.datum + 'T00:00:00'))
+              const { start, ende } = zeitslotZeitraum(res.zeitslot, weekend)
+
+              await sendeEmail({
+                an: stripeEmail,
+                betreff: `Buchungsbestätigung – ${datumAnzeige} · Upsalla Kinderpark Wuppertal`,
+                html: buchungsbestaetigungHtml({
+                  vorname: kunde.vorname,
+                  nachname: kunde.nachname,
+                  datum: datumAnzeige,
+                  zeitslot: `Slot ${res.zeitslot} — ${start}–${ende} Uhr`,
+                  logeName: loge?.name ?? 'Loge',
+                  kinderAnzahl: res.kinder_anzahl,
+                  erwachseneAnzahl: res.erwachsene_anzahl,
+                  gesamtbetrag: res.gesamtbetrag,
+                  anzahlungBetrag: res.anzahlung_betrag,
+                  stripePaymentLink: null, // bereits bezahlt — grüne "bestätigt"-Box statt Zahlungslink
+                }),
+              })
+            } catch (err) {
+              console.error('[Stripe Webhook] Nachtraegliche Buchungsbestaetigung fehlgeschlagen:', err)
+            }
+          }
         }
       }
     }
