@@ -157,6 +157,10 @@ export interface StornobestaetigungParams {
   zeitslot: string
   logeName: string
   rueckerstattungBetrag?: number   // > 0 = Rückerstattung wurde ausgelöst
+  warBezahlt?: boolean             // war überhaupt eine Anzahlung geleistet? unterscheidet
+                                    // "keine Rückerstattung laut Bedingungen" von "nie bezahlt,
+                                    // daher nichts zu erstatten" — sonst klingt es für unbezahlte
+                                    // Stornos faelschlich nach einer Vertragsstrafe
 }
 
 export function stornobestaetigungHtml(p: StornobestaetigungParams): string {
@@ -167,6 +171,14 @@ export function stornobestaetigungHtml(p: StornobestaetigungParams): string {
           <div style="font-size:20px; font-weight:800; color:#15803D; margin-bottom:6px;">${p.rueckerstattungBetrag.toFixed(2)} €</div>
           <div style="font-size:13px; color:#166534; line-height:1.6;">
             Die Anzahlung wird innerhalb von 5–10 Werktagen auf Ihr Zahlungsmittel zurückgebucht.
+          </div>
+        </td></tr>
+      </table>`
+    : p.warBezahlt === false
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6; border:1.5px solid #D1D5DB; border-radius:12px; margin-bottom:24px;">
+        <tr><td style="padding:16px 24px;">
+          <div style="font-size:13px; color:#374151; line-height:1.6;">
+            Es wurde noch keine Anzahlung geleistet — es gibt daher nichts zu erstatten.
           </div>
         </td></tr>
       </table>`

@@ -505,6 +505,7 @@ export async function reservierungStornieren(
           zeitslot: zeitslotText,
           logeName: loge?.name ?? 'Loge',
           rueckerstattungBetrag: rueckerstattungBetrag > 0 ? rueckerstattungBetrag : undefined,
+          warBezahlt: Boolean(res.stripe_payment_intent_id),
         }),
       })
     } catch (err) {
