@@ -96,16 +96,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: 'Loge nicht angegeben. Bitte Loge vom Kunden erfragen.' })
   }
 
-  // Duplikat-Schutz: gleiche Loge/Datum/Kinderzahl von Lena in den letzten 15 Minuten angelegt?
+  // Duplikat-Schutz: gleiche Loge/Datum von Lena in den letzten 15 Minuten angelegt?
   // Verhindert, dass wiederholte create_reservation-Aufrufe (z.B. weil Lena unsicher war, ob
-  // der erste Versuch geklappt hat) mehrere separate Reservierungen + Stripe-Links + SMS erzeugen.
+  // der erste Versuch geklappt hat, oder weil sie eine falsch verstandene Angabe wie Kinderzahl
+  // oder Loge korrigiert statt die vorherige Reservierung zu ändern) mehrere separate
+  // Reservierungen + Stripe-Links + SMS erzeugen. Bewusst OHNE kinder_anzahl im Abgleich —
+  // gerade eine Korrektur der Kinderzahl zwischen zwei Versuchen ist der häufigste Fall.
   const fuenfzehnMinutenVorher = new Date(Date.now() - 15 * 60 * 1000).toISOString()
   const { data: kuerzlichErstellt } = await supabaseAdmin
     .from('reservierungen')
     .select('id')
     .eq('loge_id', loge_id)
     .eq('datum', datumKorrigiert)
-    .eq('kinder_anzahl', kinder_anzahl)
     .is('erstellt_von', null)
     .neq('status', 'STORNIERT')
     .gte('erstellt_am', fuenfzehnMinutenVorher)
