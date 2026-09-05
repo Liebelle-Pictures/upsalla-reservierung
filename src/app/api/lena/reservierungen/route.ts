@@ -5,6 +5,7 @@ import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen } from '@/lib/utils/zeitslots'
+import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 
@@ -64,6 +65,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: `Noch fehlende Angaben: ${[!datum && 'datum', !zeitslot && 'zeitslot', !typ && 'typ', !kinder_anzahl && 'kinder_anzahl', !vorname && 'vorname', !nachname && 'nachname', !telefon && 'telefon'].filter(Boolean).join(', ')}. Bitte beim Kunden erfragen.` })
   }
 
+  if (!istGueltigeTelefonnummer(telefon)) {
+    return NextResponse.json({ hinweis: 'Die übergebene Telefonnummer ist ungültig (keine erkennbare Ziffernfolge). Bitte den Kunden nochmal explizit nach der Telefonnummer fragen, Ziffer für Ziffer bestätigen lassen, und dann erneut versuchen.' })
+  }
+
   const datumKorrigiert = normalisiertDatum(datum)
   if (!datumKorrigiert) {
     return NextResponse.json({ hinweis: 'Datum konnte nicht verarbeitet werden. Bitte nochmal mit dem Kunden bestätigen.' })
@@ -89,6 +94,27 @@ export async function POST(request: NextRequest) {
 
   if (!loge_id) {
     return NextResponse.json({ hinweis: 'Loge nicht angegeben. Bitte Loge vom Kunden erfragen.' })
+  }
+
+  // Duplikat-Schutz: gleiche Loge/Datum/Kinderzahl von Lena in den letzten 15 Minuten angelegt?
+  // Verhindert, dass wiederholte create_reservation-Aufrufe (z.B. weil Lena unsicher war, ob
+  // der erste Versuch geklappt hat) mehrere separate Reservierungen + Stripe-Links + SMS erzeugen.
+  const fuenfzehnMinutenVorher = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+  const { data: kuerzlichErstellt } = await supabaseAdmin
+    .from('reservierungen')
+    .select('id')
+    .eq('loge_id', loge_id)
+    .eq('datum', datumKorrigiert)
+    .eq('kinder_anzahl', kinder_anzahl)
+    .is('erstellt_von', null)
+    .neq('status', 'STORNIERT')
+    .gte('erstellt_am', fuenfzehnMinutenVorher)
+    .order('erstellt_am', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (kuerzlichErstellt) {
+    return NextResponse.json({ hinweis: `Es wurde vor Kurzem bereits eine sehr ähnliche Reservierung für dieses Datum und diese Loge angelegt (ID: ${kuerzlichErstellt.id}). NICHT erneut mit create_reservation anlegen. Falls ein Detail wie Name oder Telefonnummer korrigiert werden muss, nutze change_reservation mit dieser ID. Falls es sich um eine andere, neue Familie handelt, das dem Kunden mitteilen und das Team informieren lassen.` })
   }
 
   // Loge-Info laden: Verfügbarkeitsregel + reale Kapazität

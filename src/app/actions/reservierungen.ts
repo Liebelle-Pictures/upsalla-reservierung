@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen } from '@/lib/utils/zeitslots'
+import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 import type { ReservierungTyp } from '@/types/reservierung'
@@ -45,6 +46,9 @@ export async function reservierungErstellen(
   // Validierung
   if (!datum || !logeId || !zeitslot || !typ || !vorname || !nachname || !telefon) {
     return { fehler: 'Bitte alle Pflichtfelder ausfüllen.' }
+  }
+  if (!istGueltigeTelefonnummer(telefon)) {
+    return { fehler: 'Telefonnummer ungültig — bitte nur Ziffern (ggf. mit +) eingeben.' }
   }
   if (!dsgvo) {
     return { fehler: 'DSGVO-Einwilligung ist erforderlich.' }
@@ -331,6 +335,9 @@ export async function reservierungAktualisieren(
 
   if (kinderAnzahl < 1) return { fehler: 'Mindestens 1 Kind erforderlich.' }
   if (!telefon) return { fehler: 'Telefonnummer ist erforderlich.' }
+  if (!istGueltigeTelefonnummer(telefon)) {
+    return { fehler: 'Telefonnummer ungültig — bitte nur Ziffern (ggf. mit +) eingeben.' }
+  }
 
   const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
   const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
