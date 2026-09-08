@@ -37,22 +37,46 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', reservierungId)
 
-      // E-Mail aus Stripe Checkout in Kundendatenbank übernehmen — Lena und Personal
-      // erfragen die E-Mail meist gar nicht (fehleranfällig), Stripe verlangt sie aber
-      // beim Bezahlen zwingend. Das ist für viele Buchungen die EINZIGE Gelegenheit,
-      // eine gültige E-Mail zu bekommen (u.a. für die 10%-Geburtstags-Marketingmail
-      // im Google-Sheet-Export).
-      const stripeEmail = session.customer_details?.email
-      if (stripeEmail) {
-        const { data: res } = await supabaseAdmin
-          .from('reservierungen')
-          .select('kunde_id, datum, zeitslot, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, kunden(vorname, nachname, email), logen(name)')
-          .eq('id', reservierungId)
-          .single()
+      const { data: res } = await supabaseAdmin
+        .from('reservierungen')
+        .select('kunde_id, datum, zeitslot, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, kunden(vorname, nachname, telefon, email), logen(name)')
+        .eq('id', reservierungId)
+        .single()
 
-        if (res?.kunde_id) {
-          const kunde = (Array.isArray(res.kunden) ? res.kunden[0] : res.kunden) as { vorname: string; nachname: string; email: string | null } | null
-          const warEmailUnbekannt = !kunde?.email
+      if (res?.kunde_id) {
+        const kunde = (Array.isArray(res.kunden) ? res.kunden[0] : res.kunden) as { vorname: string; nachname: string; telefon: string | null; email: string | null } | null
+        const logeRaw = res.logen
+        const loge = (Array.isArray(logeRaw) ? logeRaw[0] : logeRaw) as unknown as { name: string } | null
+        const logeName = loge?.name ?? 'Loge'
+        const datumAnzeige = new Date(res.datum + 'T00:00:00').toLocaleDateString('de-DE', {
+          weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+        })
+        const weekend = await istPreisteuerterTag(new Date(res.datum + 'T00:00:00'))
+        const { start, ende } = zeitslotZeitraum(res.zeitslot, weekend)
+        const restbetrag = (Number(res.gesamtbetrag) - Number(res.anzahlung_betrag)).toFixed(2)
+
+        // Zahlungsbestätigung per SMS — inkl. Restbetrag, der am Tag der Reservierung
+        // vor Ort fällig ist (auf Wunsch von Upsalla).
+        if (kunde?.telefon) {
+          try {
+            const { sendeSMS } = await import('@/lib/twilio/client')
+            await sendeSMS(
+              kunde.telefon,
+              `Hallo ${kunde.vorname}! Eure Anzahlung ist eingegangen — der Termin am ${datumAnzeige} (${start}–${ende} Uhr) ist fix! Restbetrag von ${restbetrag} € bitte am Tag der Feier vor Ort bezahlen. Bis bald!`,
+            )
+          } catch (err) {
+            console.error('[Stripe Webhook] Zahlungsbestaetigungs-SMS fehlgeschlagen:', err)
+          }
+        }
+
+        // E-Mail aus Stripe Checkout in Kundendatenbank übernehmen — Lena und Personal
+        // erfragen die E-Mail meist gar nicht (fehleranfällig), Stripe verlangt sie aber
+        // beim Bezahlen zwingend. Das ist für viele Buchungen die EINZIGE Gelegenheit,
+        // eine gültige E-Mail zu bekommen (u.a. für die 10%-Geburtstags-Marketingmail
+        // im Google-Sheet-Export).
+        const stripeEmail = session.customer_details?.email
+        if (stripeEmail && kunde) {
+          const warEmailUnbekannt = !kunde.email
 
           await supabaseAdmin
             .from('kunden')
@@ -64,21 +88,11 @@ export async function POST(request: NextRequest) {
           // Buchungsbestätigung nachträglich verschicken — nur wenn wir die E-Mail vorher
           // NICHT hatten (sonst wurde die Bestätigung schon bei der Erstellung verschickt,
           // keine doppelte Mail).
-          if (warEmailUnbekannt && kunde) {
+          if (warEmailUnbekannt) {
             try {
               const { sendeEmail } = await import('@/lib/resend/client')
               const { buchungsbestaetigungHtml } = await import('@/lib/resend/templates')
               const { erzeugeReservierungICS } = await import('@/lib/utils/ics')
-
-              const logeRaw = res.logen
-              const loge = (Array.isArray(logeRaw) ? logeRaw[0] : logeRaw) as unknown as { name: string } | null
-              const logeName = loge?.name ?? 'Loge'
-
-              const datumAnzeige = new Date(res.datum + 'T00:00:00').toLocaleDateString('de-DE', {
-                weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
-              })
-              const weekend = await istPreisteuerterTag(new Date(res.datum + 'T00:00:00'))
-              const { start, ende } = zeitslotZeitraum(res.zeitslot, weekend)
 
               await sendeEmail({
                 an: stripeEmail,

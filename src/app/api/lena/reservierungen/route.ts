@@ -275,9 +275,19 @@ export async function POST(request: NextRequest) {
     console.error('[Stripe] Fehler beim Erstellen der Session:', e)
   }
 
-  // SMS mit Zahlungslink senden
-  const smsText = zahlungsLink
-    ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Bitte hier bezahlen um den Termin zu sichern: ${zahlungsLink}`
+  // SMS mit Zahlungslink senden — als Kurzlink, spart SMS-Segmente/Kosten
+  let smsLink: string | null = zahlungsLink
+  if (zahlungsLink) {
+    try {
+      const { erstelleKurzlink } = await import('@/lib/utils/kurzlink')
+      smsLink = await erstelleKurzlink(zahlungsLink, reservierungId)
+    } catch (e) {
+      console.error('[Kurzlink] Fehler beim Erstellen, verwende langen Link:', e)
+    }
+  }
+
+  const smsText = smsLink
+    ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Bitte hier bezahlen um den Termin zu sichern: ${smsLink}`
     : `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Wir melden uns in Kuerze mit dem Zahlungslink.`
 
   await sendeSMS(telefon, smsText)

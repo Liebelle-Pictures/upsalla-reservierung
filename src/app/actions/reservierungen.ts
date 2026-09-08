@@ -257,11 +257,21 @@ export async function reservierungErstellen(
   const zeitAnzeige = `${slotStart}–${slotEnde}`
   const zeitslotText = `Slot ${zeitslot} — ${slotStart}–${slotEnde} Uhr`
 
-  // Bestätigungs-SMS an Kunde senden — mit Zahlungslink, falls einer generiert wurde
+  // Bestätigungs-SMS an Kunde senden — mit Zahlungslink (als Kurzlink, spart SMS-Segmente),
+  // falls einer generiert wurde
   try {
     const { sendeSMS } = await import('@/lib/twilio/client')
-    const smsText = stripeUrl
-      ? `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bitte hier bezahlen um den Termin zu sichern: ${stripeUrl}`
+    let smsLink: string | null = stripeUrl
+    if (stripeUrl) {
+      try {
+        const { erstelleKurzlink } = await import('@/lib/utils/kurzlink')
+        smsLink = await erstelleKurzlink(stripeUrl, reservierung.id)
+      } catch (e) {
+        console.error('[Kurzlink] Fehler beim Erstellen, verwende langen Link:', e)
+      }
+    }
+    const smsText = smsLink
+      ? `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bitte hier bezahlen um den Termin zu sichern: ${smsLink}`
       : `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bei Fragen: 0202 2623339`
     await sendeSMS(telefon, smsText)
   } catch (err) {

@@ -92,7 +92,8 @@ export function buchungsbestaetigungHtml(p: BuchungsbestaetigungParams): string 
     : `
       <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0FFF4; border:1.5px solid #86EFAC; border-radius:12px; margin-bottom:24px;">
         <tr><td style="padding:16px 24px;">
-          <div style="font-size:13px; font-weight:700; color:#15803D;">✓ Reservierung bestätigt — Zahlung vor Ort</div>
+          <div style="font-size:13px; font-weight:700; color:#15803D; margin-bottom:6px;">✓ Anzahlung erhalten — Termin bestätigt</div>
+          <div style="font-size:13px; color:#166534;">Restbetrag ${restbetrag.toFixed(2)} € bitte am Tag der Feier vor Ort bezahlen.</div>
         </td></tr>
       </table>`
 
