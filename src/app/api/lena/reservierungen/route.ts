@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
-import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
+import { berechneGesamtbetrag, berechneAnzahlung, berechneGruppenBetrag, gruppenPreisProKind } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen } from '@/lib/utils/zeitslots'
 import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
@@ -130,6 +130,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ hinweis: 'Diese Loge ist an diesem Tag/Zeitslot nicht verfügbar. Bitte einen anderen Termin oder eine andere Loge wählen.' })
   }
 
+  // Gruppen bis 150 Kinder darf Lena selbstständig bestätigen — darüber braucht es eine
+  // manuelle Prüfung durch das Upsalla-Team (Vorgabe von Upsalla, 2026-09-08)
+  if (typ === 'GRUPPE' && kinder_anzahl > 150) {
+    return NextResponse.json({ hinweis: `Gruppen über 150 Kinder kann ich nicht selbstständig bestätigen (angefragt: ${kinder_anzahl} Kinder). Bitte den Kunden bitten, das Team direkt zu kontaktieren — Name, Telefonnummer und gewünschter Termin sollten trotzdem notiert werden, damit das Team sich meldet.` })
+  }
+
   // Doppelbelegung/Kapazität prüfen — gilt nicht für Gruppen (Kita/Schule) oder interne Sperrungen
   const logeKapazitaetRelevant = typ !== 'GRUPPE' && typ !== 'INTERN'
 
@@ -174,9 +180,11 @@ export async function POST(request: NextRequest) {
   }
 
   const weekend = await istPreisteuerterTag(new Date(datumKorrigiert + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinder_anzahl, weekend, erwachsene)
-  const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
-  const paketPreisProKind = weekend ? 27.0 : 23.0
+  const gesamtbetrag = typ === 'GRUPPE'
+    ? berechneGruppenBetrag(kinder_anzahl)
+    : berechneGesamtbetrag(kinder_anzahl, weekend, erwachsene)
+  const anzahlungBetrag = typ === 'GRUPPE' ? 0 : berechneAnzahlung(gesamtbetrag)
+  const paketPreisProKind = typ === 'GRUPPE' ? gruppenPreisProKind(kinder_anzahl) : (weekend ? 27.0 : 23.0)
 
   // Kunde suchen oder anlegen
   const { data: vorhandenerKunde } = await supabaseAdmin
@@ -260,19 +268,21 @@ export async function POST(request: NextRequest) {
   const zeitAnzeige = `${lenaSlotStart}–${lenaSlotEnde}`
 
   let zahlungsLink: string | null = null
-  try {
-    zahlungsLink = await erstelleAnzahlungsSession({
-      betragCent: Math.round(anzahlungBetrag * 100),
-      reservierungId,
-      beschreibung: `Anzahlung Geburtstag Upsalla – ${datumAnzeige} (${zeitAnzeige})`,
-      kundenEmail: email as string | undefined,
-    })
-    await supabaseAdmin
-      .from('reservierungen')
-      .update({ stripe_payment_link: zahlungsLink })
-      .eq('id', reservierungId)
-  } catch (e) {
-    console.error('[Stripe] Fehler beim Erstellen der Session:', e)
+  if (typ === 'GEBURTSTAG' || typ === 'BABYWELT_GEBURTSTAG') {
+    try {
+      zahlungsLink = await erstelleAnzahlungsSession({
+        betragCent: Math.round(anzahlungBetrag * 100),
+        reservierungId,
+        beschreibung: `Anzahlung Geburtstag Upsalla – ${datumAnzeige} (${zeitAnzeige})`,
+        kundenEmail: email as string | undefined,
+      })
+      await supabaseAdmin
+        .from('reservierungen')
+        .update({ stripe_payment_link: zahlungsLink })
+        .eq('id', reservierungId)
+    } catch (e) {
+      console.error('[Stripe] Fehler beim Erstellen der Session:', e)
+    }
   }
 
   // SMS mit Zahlungslink senden — als Kurzlink, spart SMS-Segmente/Kosten
@@ -286,7 +296,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const smsText = smsLink
+  const smsText = typ === 'GRUPPE'
+    ? `Hallo ${vorname}! Eure Gruppenbuchung im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Wir melden uns bei Rueckfragen. Bei Fragen: 0202 2623339`
+    : smsLink
     ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Bitte hier bezahlen um den Termin zu sichern: ${smsLink}`
     : `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Wir melden uns in Kuerze mit dem Zahlungslink.`
 

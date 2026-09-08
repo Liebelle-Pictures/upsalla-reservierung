@@ -65,6 +65,29 @@ Logenkapazität (normale Themenlogen):
 - Zahlung per Stripe-Link (wird per SMS zugeschickt)
 - Reservierung wird erst nach Zahlung fix bestätigt
 
+## Inklusivleistungen Geburtstagsloge
+- Aufenthaltsdauer in der Loge: 4 Stunden (= der gebuchte Zeitslot)
+- Nach Ablauf der 4 Stunden: Loge muss geräumt werden — der Tag im Park kann mit der im Paket enthaltenen Tageskarte aber weiter genutzt werden (freie Plätze im allgemeinen Bereich)
+- 3 Begleitpersonen sind im Paket inklusive (siehe Preise oben)
+- Getränke inklusive: pro 2 Kinder 1 Flasche Wasser (0,75 l, still oder Sprudel) — 5,00 € Pfand pro Flasche, wird bei Rückgabe erstattet
+
+## Verhalten in der Loge
+- Logen sind primär für die Kinder gedacht
+- Wenn die Kinder essen, sollen die Begleitpersonen die Loge kurz verlassen — davor gibt es eigene Sitzplätze für Erwachsene
+
+## Speisen, Getränke & Deko — was erlaubt ist
+Verboten:
+- Warme Speisen (jeglicher Art)
+- Eigene Getränke (jeglicher Art) — Wasser ist im Paket inklusive, siehe oben
+- Konfetti und Lametta als Deko
+
+Erlaubt:
+- Kuchen/Torten
+- Knabberzeug/Snacks
+- Eigene Dekoration (außer Konfetti/Lametta)
+
+Geschirr: Bei mitgebrachtem Kuchen bitte eigene Pappteller und Besteck mitbringen — alternativ vor Ort erhältlich für 0,10 € pro Teller.
+
 ## Stornierungsbedingungen
 - 7 oder mehr Tage vor dem Termin: kostenlose Stornierung, Anzahlung wird vollständig erstattet
 - Weniger als 7 Tage vor dem Termin: Stornierung möglich, Anzahlung verfällt
@@ -77,13 +100,19 @@ Familienkarte: Für die ganze Familie
 Jahreskarte: Ein Jahr voller Abenteuer
 Babywelt: Ab 6 Monaten, sicher gestaltet
 Kindergeburtstage: Ab 6 Kindern, mit Deko, Menüwahl und Überraschungen
-Gruppenangebote: Für Kitas, Schulen und Vereine — Gruppenpreise auf Anfrage
+Gruppenangebote: Für Kitas, Schulen und Vereine (Typ GRUPPE) — Staffelpreise pro Kind:
+- 9,50 € pro Kind (bis unter 50 Kinder)
+- 9,00 € pro Kind (ab 50 Kindern)
+- 8,00 € pro Kind (ab 100 Kindern)
+Keine Anzahlung nötig für Gruppen. Begleitpersonen: 1 Erwachsener pro 10 Kinder gratis.
+Bis 150 Kinder kann Lena die Gruppenbuchung direkt selbst bestätigen. Ab 151 Kindern übernimmt das Upsalla-Team die Bestätigung manuell — Lena notiert die Anfrage und das Team meldet sich.
+Telefonisch/durch Mitarbeiter können auch größere Gruppen (über 150 Kinder) direkt gebucht werden.
 The Wild Side: Ü18 Events für Erwachsene
 Gastronomie: Kinderfreundliche Speisen vor Ort
 
 ## Wichtige Hausregeln
 - Rutschfeste Socken sind Pflicht (vor Ort erhältlich)
-- Eigene Speisen und Getränke sind NICHT erlaubt
+- Speisen/Getränke/Deko: siehe Abschnitt "Speisen, Getränke & Deko" oben — Kuchen und Snacks sind erlaubt, warme Speisen und eigene Getränke nicht
 - Kostenlose Parkplätze direkt am Park
 - Kinderwagen bitte im Eingangsbereich lassen
 
