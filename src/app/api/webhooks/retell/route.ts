@@ -30,10 +30,11 @@ export async function POST(request: NextRequest) {
   const event = body.event as string
   const call = body.call as Record<string, unknown> | undefined
 
-  // call_started: Anrufer-Nummer erkennen und als dynamische Variablen zurückgeben
-  // ACHTUNG: from_number ist wegen Rufumleitung vom Festnetz praktisch immer die
-  // Umleitungsnummer, nicht die des Kunden — siehe retell-variablen/route.ts. Deshalb im
-  // Prompt aktuell nicht verwendet.
+  // call_started: Anrufer-Nummer erkennen und als dynamische Variablen zurückgeben.
+  // Bis 2026-09-11 war from_number wegen einfacher Rufumleitung vom Festnetz praktisch immer
+  // die Umleitungsnummer, nicht die des Kunden — seit die FRITZ!Box auf "automatisch"
+  // (CLIP-Durchreichung) umgestellt wurde, kommt hier die echte Anrufer-Nummer an (verifiziert
+  // per Retell-API an echten Anrufen). caller_phone wird jetzt im Prompt verwendet.
   if (event === 'call_started') {
     const fromNumber = (call?.from_number as string | undefined) ?? null
     console.log('[Retell] call_started | from_number:', fromNumber)
