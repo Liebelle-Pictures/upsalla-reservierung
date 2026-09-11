@@ -57,11 +57,16 @@ export async function POST(request: NextRequest) {
 
   // 3. Versuch: Name als Ersatzsuche, falls Telefonsuche nichts findet (z.B. Buchung lief auf
   // anderer Nummer). Nur bei eindeutigem Treffer automatisch übernehmen.
+  // Namen werden wortweise verglichen ("Vanessa Jansen" -> vorname ODER nachname enthält
+  // "Vanessa" ODER "Jansen") — ein Vergleich des kompletten Strings würde nie treffen, weil
+  // vorname/nachname jeweils nur ein Wort enthalten.
   if (!kunde && name) {
+    const namensteile = name.trim().split(/\s+/).filter(Boolean)
+    const bedingung = namensteile.flatMap(teil => [`vorname.ilike.%${teil}%`, `nachname.ilike.%${teil}%`]).join(',')
     const { data: kandidaten } = await supabaseAdmin
       .from('kunden')
       .select('id, vorname, nachname')
-      .or(`vorname.ilike.%${name}%,nachname.ilike.%${name}%`)
+      .or(bedingung)
       .limit(5)
 
     if (kandidaten && kandidaten.length === 1) {
