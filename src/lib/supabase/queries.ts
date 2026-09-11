@@ -17,6 +17,27 @@ export interface Kunde {
   erstellt_am: string
 }
 
+export interface KundenAnfrage {
+  id: string
+  vorname: string | null
+  nachname: string | null
+  telefon: string | null
+  anliegen: string
+  reservierung_id: string | null
+  status: 'OFFEN' | 'ERLEDIGT'
+  erstellt_am: string
+  erledigt_am: string | null
+}
+
+export async function getKundenAnfragen(): Promise<KundenAnfrage[]> {
+  const { data } = await supabaseAdmin
+    .from('kunden_anfragen')
+    .select('*')
+    .order('status', { ascending: true }) // OFFEN vor ERLEDIGT (alphabetisch zufällig passend)
+    .order('erstellt_am', { ascending: false })
+  return (data as KundenAnfrage[]) ?? []
+}
+
 export async function getLoge(id: string): Promise<Loge | null> {
   const { data } = await supabaseAdmin
     .from('logen')
