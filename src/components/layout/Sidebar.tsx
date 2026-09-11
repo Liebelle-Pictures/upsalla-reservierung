@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { abmelden } from '@/app/actions/auth'
+import { AnfragenBadge } from './AnfragenBadge'
 
 const NAV_LINKS = [
   {
@@ -89,7 +90,7 @@ const NAV_LINKS = [
   },
 ]
 
-export function Sidebar() {
+export function Sidebar({ offeneAnfragen = 0 }: { offeneAnfragen?: number }) {
   const pathname = usePathname()
 
   return (
@@ -145,7 +146,8 @@ export function Sidebar() {
               onMouseLeave={e => { if (!aktiv) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
             >
               {icon}
-              {label}
+              <span className="flex-1">{label}</span>
+              {href === '/anfragen' && <AnfragenBadge initial={offeneAnfragen} />}
             </Link>
           )
         })}

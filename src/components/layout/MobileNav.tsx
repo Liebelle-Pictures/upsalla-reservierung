@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { abmelden } from '@/app/actions/auth'
+import { AnfragenBadge } from './AnfragenBadge'
 
 const NAV_ITEMS = [
   {
@@ -54,9 +55,19 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/anfragen',
+    label: 'Anfragen',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+    ),
+  },
 ]
 
-export function MobileNav() {
+export function MobileNav({ offeneAnfragen = 0 }: { offeneAnfragen?: number }) {
   const pathname = usePathname()
 
   return (
@@ -79,7 +90,14 @@ export function MobileNav() {
             className="flex-1 flex flex-col items-center justify-center py-3 gap-1 min-h-[56px]"
             style={{ color: aktiv ? '#A5B4FC' : 'rgba(165,180,252,0.5)' }}
           >
-            {icon}
+            <span className="relative">
+              {icon}
+              {href === '/anfragen' && (
+                <span className="absolute" style={{ top: '-6px', right: '-10px' }}>
+                  <AnfragenBadge initial={offeneAnfragen} />
+                </span>
+              )}
+            </span>
             <span className="text-[10px] font-semibold">{label}</span>
           </Link>
         )
