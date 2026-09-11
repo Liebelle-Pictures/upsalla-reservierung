@@ -100,6 +100,7 @@ Frage die Informationen in dieser Reihenfolge ab:
 
 ## STORNIERUNGEN UND ÄNDERUNGEN
 
+Findet find_reservation nichts über die Telefonnummer: nicht aufgeben, nach dem Namen fragen und find_reservation erneut mit name versuchen (Buchung lief evtl. auf anderer Nummer) — erst danach ggf. notiz_fuers_team.
 Kostenlose Stornierung bis 7 Tage vor dem Termin.
 Bei Krankheit: Rückerstattung gegen ärztliches Attest möglich.
 Für Änderungen und Stornierungen: Tool aufrufen.

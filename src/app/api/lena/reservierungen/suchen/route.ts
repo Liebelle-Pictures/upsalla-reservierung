@@ -6,7 +6,12 @@ import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
 
 export const dynamic = 'force-dynamic'
 
-// POST /api/lena/reservierungen/suchen — Reservierungen nach Telefon suchen
+function normalisiereTelefon(t: string): string {
+  return t.replace(/[\s()-]/g, '')
+}
+
+// POST /api/lena/reservierungen/suchen — Reservierungen nach Telefon (mit Formatierungs-
+// Toleranz) oder ersatzweise nach Name suchen
 export async function POST(request: NextRequest) {
   const auth = pruefeLenaAuth(request)
   if (auth) return auth
@@ -17,17 +22,56 @@ export async function POST(request: NextRequest) {
   console.log('[find_reservation] args:', JSON.stringify(args))
 
   const telefon = args.telefon ?? args.Telefon ?? args.phone ?? request.nextUrl.searchParams.get('telefon')
+  const name = args.name as string | undefined
 
-  if (!telefon) {
-    console.log('[find_reservation] telefon fehlt, body keys:', Object.keys(body))
+  if (!telefon && !name) {
+    console.log('[find_reservation] weder telefon noch name, body keys:', Object.keys(body))
     return NextResponse.json({ hinweis: 'Bitte zuerst die Telefonnummer des Kunden erfragen, dann erneut aufrufen.' })
   }
 
-  const { data: kunde } = await supabaseAdmin
-    .from('kunden')
-    .select('id, vorname, nachname')
-    .eq('telefon', telefon)
-    .maybeSingle()
+  let kunde: { id: string; vorname: string; nachname: string } | null = null
+
+  if (telefon) {
+    // 1. Versuch: exakte Übereinstimmung
+    const exakt = await supabaseAdmin
+      .from('kunden')
+      .select('id, vorname, nachname')
+      .eq('telefon', telefon)
+      .maybeSingle()
+    kunde = exakt.data
+
+    // 2. Versuch: Formatierungs-tolerant über die letzten 8 Ziffern (Leerzeichen/Bindestriche
+    // sind eine bekannt häufige Ursache für "nicht gefunden", obwohl die Nummer stimmt)
+    if (!kunde) {
+      const normalisiert = normalisiereTelefon(telefon)
+      const letzte8 = normalisiert.slice(-8)
+      if (letzte8.length === 8) {
+        const { data: kandidaten } = await supabaseAdmin
+          .from('kunden')
+          .select('id, vorname, nachname, telefon')
+          .ilike('telefon', `%${letzte8}`)
+        kunde = (kandidaten ?? []).find(k => normalisiereTelefon(k.telefon) === normalisiert) ?? null
+      }
+    }
+  }
+
+  // 3. Versuch: Name als Ersatzsuche, falls Telefonsuche nichts findet (z.B. Buchung lief auf
+  // anderer Nummer). Nur bei eindeutigem Treffer automatisch übernehmen.
+  if (!kunde && name) {
+    const { data: kandidaten } = await supabaseAdmin
+      .from('kunden')
+      .select('id, vorname, nachname')
+      .or(`vorname.ilike.%${name}%,nachname.ilike.%${name}%`)
+      .limit(5)
+
+    if (kandidaten && kandidaten.length === 1) {
+      kunde = kandidaten[0]
+    } else if (kandidaten && kandidaten.length > 1) {
+      return NextResponse.json({
+        hinweis: `Mehrere Kunden mit ähnlichem Namen gefunden (${kandidaten.map(k => `${k.vorname} ${k.nachname}`).join(', ')}). Bitte Telefonnummer erneut erfragen und Ziffer für Ziffer bestätigen, um eindeutig zu suchen.`,
+      })
+    }
+  }
 
   if (!kunde) {
     return NextResponse.json({ reservierungen: [] })
