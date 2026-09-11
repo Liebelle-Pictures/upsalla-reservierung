@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getOffeneAnfragenAnzahl } from '@/app/actions/anfragen'
 
-const POLL_MS = 20000
+const POLL_MS = 15000
 
 export function AnfragenBadge({ initial = 0 }: { initial?: number }) {
   const [anzahl, setAnzahl] = useState(initial)
@@ -13,8 +13,19 @@ export function AnfragenBadge({ initial = 0 }: { initial?: number }) {
     const laden = () => {
       getOffeneAnfragenAnzahl().then(n => { if (aktiv) setAnzahl(n) }).catch(() => {})
     }
+    // Sofort beim Mounten pruefen statt auf den ersten Intervall-Tick zu warten — der vom
+    // Server mitgegebene "initial"-Wert kann durch die Zeit zwischen Server-Rendering und
+    // Anzeige im Browser bereits veraltet sein (z.B. wenn zwischendurch etwas erledigt wurde).
+    laden()
     const id = setInterval(laden, POLL_MS)
-    return () => { aktiv = false; clearInterval(id) }
+    // Sofort neu laden, wenn irgendwo im UI (z.B. "Erledigt"-Button) eine Änderung passiert —
+    // ohne auf den nächsten Intervall-Tick warten zu müssen.
+    window.addEventListener('anfragen-aktualisiert', laden)
+    return () => {
+      aktiv = false
+      clearInterval(id)
+      window.removeEventListener('anfragen-aktualisiert', laden)
+    }
   }, [])
 
   if (anzahl === 0) return null

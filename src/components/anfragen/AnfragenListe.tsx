@@ -62,7 +62,10 @@ export function AnfragenListe({ anfragen }: Props) {
 
               {!erledigt && (
                 <button
-                  onClick={() => startTransition(() => anfrageErledigt(a.id))}
+                  onClick={() => startTransition(async () => {
+                    await anfrageErledigt(a.id)
+                    window.dispatchEvent(new Event('anfragen-aktualisiert'))
+                  })}
                   disabled={pending}
                   className="shrink-0 h-10 px-4 rounded-lg text-sm font-semibold disabled:opacity-50"
                   style={{ background: '#EA580C', color: '#fff' }}
