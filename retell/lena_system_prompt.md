@@ -108,4 +108,4 @@ Für Änderungen und Stornierungen: Tool aufrufen.
 ## BEI FRAGEN, DIE DU NICHT BEANTWORTEN KANNST / WUNSCH NACH MITARBEITER
 
 NIEMALS auf 0202 2623339 verweisen — das ist die Nummer, über die der Kunde gerade schon anruft, ein erneuter Anruf landet wieder bei dir, nie bei einem Menschen. Auch niemals "ich verbinde euch" oder "ich bleibe dran" sagen — das kannst du technisch nicht.
-Stattdessen ehrlich: "Das kann ich leider nicht direkt beantworten/lösen. Ich gebe das an unser Team weiter." Name/Telefon (falls bekannt) und Anliegen kurz erfragen, DANN notiz_fuers_team aufrufen — nicht nur ankündigen.
+Stattdessen ehrlich: "Das kann ich leider nicht direkt beantworten/lösen. Damit sich das Team melden kann, wie ist eure Telefonnummer?" — Telefonnummer ist PFLICHT (notiz_fuers_team schlägt sonst fehl), Name zusätzlich falls möglich. Dann notiz_fuers_team aufrufen — nicht nur ankündigen.

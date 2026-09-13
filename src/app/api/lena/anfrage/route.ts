@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
   if (!anliegen) {
     return NextResponse.json({ hinweis: 'Anliegen fehlt. Bitte kurz zusammenfassen, worum es geht.' })
   }
+  if (!telefon) {
+    return NextResponse.json({ hinweis: 'Telefonnummer fehlt — ohne sie kann das Team den Kunden nicht zurückrufen. Bitte den Kunden nach seiner Telefonnummer fragen und dann erneut aufrufen.' })
+  }
 
   const { data: eintrag, error } = await supabaseAdmin
     .from('kunden_anfragen')
