@@ -30,35 +30,12 @@ export async function POST(request: NextRequest) {
   const event = body.event as string
   const call = body.call as Record<string, unknown> | undefined
 
-  // call_started: Anrufer-Nummer erkennen und als dynamische Variablen zurückgeben.
-  // Bis 2026-09-11 war from_number wegen einfacher Rufumleitung vom Festnetz praktisch immer
-  // die Umleitungsnummer, nicht die des Kunden — seit die FRITZ!Box auf "automatisch"
-  // (CLIP-Durchreichung) umgestellt wurde, kommt hier die echte Anrufer-Nummer an (verifiziert
-  // per Retell-API an echten Anrufen). caller_phone wird jetzt im Prompt verwendet.
-  if (event === 'call_started') {
-    const fromNumber = (call?.from_number as string | undefined) ?? null
-    console.log('[Retell] call_started | from_number:', fromNumber)
-
-    if (!fromNumber) {
-      return NextResponse.json({
-        llm_dynamic_variables: { caller_phone: 'unbekannt', ist_mobil: 'nein' },
-      })
-    }
-
-    const istMobil = /^\+49(15|16|17)\d/.test(fromNumber)
-    // Lokales Format (0...) statt international (+49...) — Kunden nennen/bestätigen
-    // Nummern lokal, das +49-Format sorgt nur für Verwirrung und Übertragungsfehler.
-    const callerPhone = fromNumber.startsWith('+49')
-      ? `0${fromNumber.slice(3)}`
-      : fromNumber
-
-    return NextResponse.json({
-      llm_dynamic_variables: {
-        caller_phone: callerPhone,
-        ist_mobil: istMobil ? 'ja' : 'nein',
-      },
-    })
-  }
+  // HINWEIS: call_started wird hier NICHT mehr behandelt. Der allgemeine Event-Webhook
+  // (dieser hier) wird von Retell nur für Monitoring/Analytics zuverlässig ausgewertet — eine
+  // Antwort mit llm_dynamic_variables auf call_started kam laut echten Testanrufen NIE im
+  // Call-Kontext an. Die korrekte, dedizierte Stelle für Variablen VOR dem ersten Wort des
+  // Agents ist Retells "Inbound Call Webhook" (pro Telefonnummer konfiguriert, andere
+  // Antwortform) — siehe retell-inbound/route.ts.
 
   if (!call || (event !== 'call_ended' && event !== 'call_analyzed')) {
     return NextResponse.json({ ignoriert: true })
