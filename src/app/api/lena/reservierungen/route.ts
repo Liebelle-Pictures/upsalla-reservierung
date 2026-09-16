@@ -46,14 +46,6 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ fehler: 'Ungültiges JSON' }, { status: 400 })
   }
-  // TEMPORÄR — bestätigen dass raw.call.from_number wie erwartet vorliegt. Danach entfernen.
-  try {
-    await supabaseAdmin.from('kunden_anfragen').insert({
-      vorname: 'DEBUG',
-      anliegen: `create_reservation raw: ${JSON.stringify(raw).slice(0, 3000)}`,
-    })
-  } catch {}
-
   const { datum, loge_id: loge_id_raw, loge_name, zeitslot, typ, kinder_anzahl, erwachsene_anzahl, vorname, nachname, email, notizen } = body as {
     datum: string
     loge_id?: string

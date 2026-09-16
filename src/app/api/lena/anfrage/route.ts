@@ -17,13 +17,6 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}))
   const args = body.args ?? body
-  // TEMPORÄR — bestätigen dass body.call.from_number wie erwartet vorliegt. Danach entfernen.
-  try {
-    await supabaseAdmin.from('kunden_anfragen').insert({
-      vorname: 'DEBUG',
-      anliegen: `notiz_fuers_team raw: ${JSON.stringify(body).slice(0, 3000)}`,
-    })
-  } catch {}
   const { vorname, nachname, anliegen, reservierung_id } = args as {
     vorname?: string
     nachname?: string

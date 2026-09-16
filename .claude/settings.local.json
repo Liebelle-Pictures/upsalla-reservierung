@@ -19,7 +19,10 @@
       "Bash(sips -z 512 512 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-icon-color.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/public/icon-512.png\")",
       "Bash(sips -z 32 32 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-icon-color.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/src/app/icon.png\")",
       "Bash(sips -z 180 180 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-icon-color.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/src/app/apple-icon.png\")",
-      "Bash(sips -Z 600 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-logo-white.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/public/freizo-logo-white.png\")"
+      "Bash(sips -Z 600 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-logo-white.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/public/freizo-logo-white.png\")",
+      "Bash(sips -g pixelWidth -g pixelHeight \"/Users/valeriusova/Desktop/upsalla-reservierung/public/freizo-logo-white.png\")",
+      "Bash(sips -z 96 96 \"/Users/valeriusova/Desktop/upsalla-reservierung/Freizo Logo/PNG fond transparent/freizo-icon-color.png\" --out \"/Users/valeriusova/Desktop/upsalla-reservierung/src/app/icon.png\")",
+      "Bash(curl *)"
     ]
   }
 }
