@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Retell } from 'retell-sdk'
-import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,28 +27,23 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>
   try {
     body = JSON.parse(payload)
-    // TEMPORÄR — Diagnose warum caller_phone trotz Fix noch "unbekannt" kam.
-    // Nach Bestätigung wieder entfernen.
-    await supabaseAdmin.from('kunden_anfragen').insert({
-      vorname: 'DEBUG',
-      anliegen: `retell-inbound payload: ${JSON.stringify(body).slice(0, 3000)}`,
-    })
   } catch {
     return NextResponse.json({ call_inbound: { dynamic_variables: { caller_phone: 'unbekannt', ist_mobil: 'nein' } } })
   }
 
-  // Bei Anrufen, die über die FRITZ!Box unconditional an Twilio weitergeleitet werden,
-  // ist "from_number" zum Zeitpunkt dieses Webhooks (vor Abschluss des SIP-Setups) leer/
-  // unzuverlässig — die echte Anrufer-Nummer steht stattdessen zuverlässig im
-  // "P-Asserted-Identity"-SIP-Header (Format: '"+49..." <sip:+49...@...>'). Das war die
-  // Ursache dafür, dass caller_phone in praktisch allen echten Anrufen "unbekannt" blieb,
-  // obwohl from_number im fertigen Call-Objekt danach korrekt gesetzt war.
-  const sipHeaders = (body.custom_sip_headers as Record<string, string> | undefined) ?? {}
+  // Das eigentliche Payload steckt komplett unter body.call_inbound (nicht auf Root-Ebene,
+  // wie eine erste Fehlannahme nahelegte) — bestätigt per Debug-Log eines echten Testanrufs:
+  // { event: "call_inbound", call_inbound: { call_id, agent_id, from_number, to_number,
+  // custom_sip_headers } }. from_number war darin die ganze Zeit korrekt gesetzt; der Bug war
+  // schlicht der falsche Lesepfad (body.from_number statt body.call_inbound.from_number).
+  const callInbound = (body.call_inbound as Record<string, unknown> | undefined) ?? body
+
+  const sipHeaders = (callInbound.custom_sip_headers as Record<string, string> | undefined) ?? {}
   const paiKey = Object.keys(sipHeaders).find(k => k.toLowerCase() === 'p-asserted-identity')
   const paiValue = paiKey ? sipHeaders[paiKey] : undefined
   const paiMatch = paiValue?.match(/\+\d{6,15}/)
 
-  const fromNumber = paiMatch?.[0] ?? (body.from_number as string | undefined) ?? null
+  const fromNumber = paiMatch?.[0] ?? (callInbound.from_number as string | undefined) ?? null
 
   if (!fromNumber) {
     return NextResponse.json({ call_inbound: { dynamic_variables: { caller_phone: 'unbekannt', ist_mobil: 'nein' } } })
