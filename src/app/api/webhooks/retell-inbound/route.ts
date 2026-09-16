@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Retell } from 'retell-sdk'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,12 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>
   try {
     body = JSON.parse(payload)
+    // TEMPORÄR — Diagnose warum caller_phone trotz Fix noch "unbekannt" kam.
+    // Nach Bestätigung wieder entfernen.
+    await supabaseAdmin.from('kunden_anfragen').insert({
+      vorname: 'DEBUG',
+      anliegen: `retell-inbound payload: ${JSON.stringify(body).slice(0, 3000)}`,
+    })
   } catch {
     return NextResponse.json({ call_inbound: { dynamic_variables: { caller_phone: 'unbekannt', ist_mobil: 'nein' } } })
   }
