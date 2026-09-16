@@ -31,7 +31,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ call_inbound: { dynamic_variables: { caller_phone: 'unbekannt', ist_mobil: 'nein' } } })
   }
 
-  const fromNumber = (body.from_number as string | undefined) ?? null
+  // Bei Anrufen, die über die FRITZ!Box unconditional an Twilio weitergeleitet werden,
+  // ist "from_number" zum Zeitpunkt dieses Webhooks (vor Abschluss des SIP-Setups) leer/
+  // unzuverlässig — die echte Anrufer-Nummer steht stattdessen zuverlässig im
+  // "P-Asserted-Identity"-SIP-Header (Format: '"+49..." <sip:+49...@...>'). Das war die
+  // Ursache dafür, dass caller_phone in praktisch allen echten Anrufen "unbekannt" blieb,
+  // obwohl from_number im fertigen Call-Objekt danach korrekt gesetzt war.
+  const sipHeaders = (body.custom_sip_headers as Record<string, string> | undefined) ?? {}
+  const paiKey = Object.keys(sipHeaders).find(k => k.toLowerCase() === 'p-asserted-identity')
+  const paiValue = paiKey ? sipHeaders[paiKey] : undefined
+  const paiMatch = paiValue?.match(/\+\d{6,15}/)
+
+  const fromNumber = paiMatch?.[0] ?? (body.from_number as string | undefined) ?? null
 
   if (!fromNumber) {
     return NextResponse.json({ call_inbound: { dynamic_variables: { caller_phone: 'unbekannt', ist_mobil: 'nein' } } })
