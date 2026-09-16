@@ -142,7 +142,8 @@ BBQ Zelt (flexible Kapazität, keine feste Themenwelt):
 
 Runde Tische unten (3 runde Tische, bis zu 18 Kinder, keine Mindestanzahl):
 - NUR erwähnen wenn: (a) alle passenden Themenlogen für den gewünschten Termin bereits belegt sind, ODER (b) die Gruppe mehr als 16 Kinder hat (bis maximal 18). Sonst nicht anbieten — bleibt im Hintergrund gegenüber den normalen Themenlogen.
-- An allen Tagen verfügbar (Wochentag wie Wochenende), in allen Zeitslots — keine Einschränkung mehr auf Sa/So vormittags.
+- Wochentag (Mo–Fr): verfügbar wie jede andere Loge, im einzigen Slot 15:00–19:00.
+- Wochenende (Sa/So): NUR vormittags (Slot 1, 10:30–14:30) — nachmittags (Slot 2, 15:00–19:00) NICHT verfügbar. check_availability zeigt sie am Wochenende ohnehin nur für Slot 1 an — dann auch nicht für Slot 2 anbieten.
 - Auch hier gilt NICHT die "6–9 = halbe Loge"-Regel — eigener Raum, wird nicht geteilt.
 
 ## ZEITSLOTS

@@ -7,7 +7,7 @@ export interface Loge {
   ist_babywelt: boolean
   aktiv: boolean
   kapazitaet_flexibel: boolean
-  verfuegbarkeit_regel: string | null   // z.B. 'SA_SO_SLOT1' — null = normale Verfügbarkeit
+  verfuegbarkeit_regel: string | null   // z.B. 'KEIN_WE_NACHMITTAG' — null = normale Verfügbarkeit
 }
 
 export interface Zeitslot {

@@ -50,16 +50,18 @@ export function zeitslotZeitraum(zeitslot: number, istTeuerterTag: boolean): { s
   return { start: '15:00', ende: '19:00' }
 }
 
-// Prüft loge-spezifische Verfügbarkeitsregeln (z.B. "Runde Tische unten" nur Sa/So Slot 1)
+// Prüft loge-spezifische Verfügbarkeitsregeln (z.B. "Runde Tische unten": an jedem
+// Wochentag verfügbar, am Wochenende aber nur vormittags/Slot 1, nicht nachmittags)
 export function logeIstVerfuegbarFuerSlot(
   verfuegbarkeitRegel: string | null,
   datum: Date,
   zeitslot: number,
 ): boolean {
   if (!verfuegbarkeitRegel) return true
-  if (verfuegbarkeitRegel === 'SA_SO_SLOT1') {
+  if (verfuegbarkeitRegel === 'KEIN_WE_NACHMITTAG') {
     const tag = datum.getDay()
-    return (tag === 0 || tag === 6) && zeitslot === 1
+    const istWochenende = tag === 0 || tag === 6
+    return !(istWochenende && zeitslot === 2)
   }
   return true
 }
