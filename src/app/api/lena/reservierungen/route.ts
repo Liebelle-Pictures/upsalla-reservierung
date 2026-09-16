@@ -6,6 +6,7 @@ import { berechneGesamtbetrag, berechneAnzahlung, berechneGruppenBetrag, gruppen
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen } from '@/lib/utils/zeitslots'
 import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
+import { extrahiereAnruferNummer, zuLokalesFormat } from '@/lib/lena/callerPhone'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 
@@ -37,15 +38,23 @@ export async function POST(request: NextRequest) {
   if (auth) return auth
 
   let body: Record<string, unknown>
+  let raw: Record<string, unknown>
   try {
-    const raw = await request.json()
+    raw = await request.json()
     // Retell sendet Argumente in body.args
     body = (raw.args ?? raw) as Record<string, unknown>
   } catch {
     return NextResponse.json({ fehler: 'Ungültiges JSON' }, { status: 400 })
   }
+  // TEMPORÄR — bestätigen dass raw.call.from_number wie erwartet vorliegt. Danach entfernen.
+  try {
+    await supabaseAdmin.from('kunden_anfragen').insert({
+      vorname: 'DEBUG',
+      anliegen: `create_reservation raw: ${JSON.stringify(raw).slice(0, 3000)}`,
+    })
+  } catch {}
 
-  const { datum, loge_id: loge_id_raw, loge_name, zeitslot, typ, kinder_anzahl, erwachsene_anzahl, vorname, nachname, telefon, email, notizen } = body as {
+  const { datum, loge_id: loge_id_raw, loge_name, zeitslot, typ, kinder_anzahl, erwachsene_anzahl, vorname, nachname, email, notizen } = body as {
     datum: string
     loge_id?: string
     loge_name?: string
@@ -55,14 +64,29 @@ export async function POST(request: NextRequest) {
     erwachsene_anzahl?: number
     vorname: string
     nachname: string
-    telefon: string
     email?: string
     notizen?: string
   }
+  let telefon = (body as { telefon?: string }).telefon
   const erwachsene = Number(erwachsene_anzahl ?? 0)
 
-  if (!datum || !zeitslot || !typ || !kinder_anzahl || !vorname || !nachname || !telefon) {
-    return NextResponse.json({ hinweis: `Noch fehlende Angaben: ${[!datum && 'datum', !zeitslot && 'zeitslot', !typ && 'typ', !kinder_anzahl && 'kinder_anzahl', !vorname && 'vorname', !nachname && 'nachname', !telefon && 'telefon'].filter(Boolean).join(', ')}. Bitte beim Kunden erfragen.` })
+  if (!datum || !zeitslot || !typ || !kinder_anzahl || !vorname || !nachname) {
+    return NextResponse.json({ hinweis: `Noch fehlende Angaben: ${[!datum && 'datum', !zeitslot && 'zeitslot', !typ && 'typ', !kinder_anzahl && 'kinder_anzahl', !vorname && 'vorname', !nachname && 'nachname'].filter(Boolean).join(', ')}. Bitte beim Kunden erfragen.` })
+  }
+
+  // Fallback: Das LLM übergibt beim Telefonfeld manchmal einen Platzhalter (z.B. "+49") statt
+  // {{caller_phone}} korrekt zu verwenden, obwohl die echte Nummer verfügbar ist — reale
+  // Testanrufe haben das wiederholt gezeigt. Server-seitiger Fallback auf die tatsächliche
+  // Anrufer-Nummer aus dem Call-Objekt macht das unabhängig vom LLM-Verhalten zuverlässig.
+  if (!telefon || !istGueltigeTelefonnummer(telefon)) {
+    const anruferNummer = extrahiereAnruferNummer(raw)
+    if (anruferNummer) {
+      telefon = zuLokalesFormat(anruferNummer)
+    }
+  }
+
+  if (!telefon) {
+    return NextResponse.json({ hinweis: 'Noch fehlende Angaben: telefon. Bitte beim Kunden erfragen.' })
   }
 
   if (!istGueltigeTelefonnummer(telefon)) {

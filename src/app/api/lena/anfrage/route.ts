@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
+import { extrahiereAnruferNummer, zuLokalesFormat } from '@/lib/lena/callerPhone'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,17 +17,34 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}))
   const args = body.args ?? body
-  const { vorname, nachname, telefon, anliegen, reservierung_id } = args as {
+  // TEMPORÄR — bestätigen dass body.call.from_number wie erwartet vorliegt. Danach entfernen.
+  try {
+    await supabaseAdmin.from('kunden_anfragen').insert({
+      vorname: 'DEBUG',
+      anliegen: `notiz_fuers_team raw: ${JSON.stringify(body).slice(0, 3000)}`,
+    })
+  } catch {}
+  const { vorname, nachname, anliegen, reservierung_id } = args as {
     vorname?: string
     nachname?: string
     telefon?: string
     anliegen: string
     reservierung_id?: string
   }
+  let telefon = (args as { telefon?: string }).telefon
 
   if (!anliegen) {
     return NextResponse.json({ hinweis: 'Anliegen fehlt. Bitte kurz zusammenfassen, worum es geht.' })
   }
+
+  // Fallback: das LLM übergibt telefon manchmal als Platzhalter/gar nicht, obwohl die echte
+  // Anrufer-Nummer verfügbar ist (siehe callerPhone.ts) — server-seitig nachrüsten statt dem
+  // Kunden fälschlich zu sagen, das Team könne ihn nicht zurückrufen.
+  if (!telefon || !istGueltigeTelefonnummer(telefon)) {
+    const anruferNummer = extrahiereAnruferNummer(body)
+    if (anruferNummer) telefon = zuLokalesFormat(anruferNummer)
+  }
+
   if (!telefon) {
     return NextResponse.json({ hinweis: 'Telefonnummer fehlt — ohne sie kann das Team den Kunden nicht zurückrufen. Bitte den Kunden nach seiner Telefonnummer fragen und dann erneut aufrufen.' })
   }
