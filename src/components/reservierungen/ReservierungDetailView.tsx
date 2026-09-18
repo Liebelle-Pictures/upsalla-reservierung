@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { reservierungStornieren, barzahlungBestaetigen } from '@/app/actions/reservierungen'
-import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
+import { zeitslotZeitraum, GRUPPEN_ZEIT_ANZEIGE } from '@/lib/utils/zeitslots'
 
 /* ── Status-Konfiguration ── */
 const STATUS_CONFIG = {
@@ -175,7 +175,9 @@ export function ReservierungDetailView({ reservierung: r, istTeuerterTag }: Prop
   const cfg = vollbetragFaellig ? VOLLBETRAG_CONFIG : STATUS_CONFIG[r.status]
   const logeFarbe = r.logen ? getLogeFarbe(r.logen.name, r.logen.ist_babywelt) : { farbe: '#6366F1', kategorie: 'Unisex' }
   const { start: detailSlotStart, ende: detailSlotEnde } = zeitslotZeitraum(r.zeitslot, istTeuerterTag)
-  const zeitslotText = `Slot ${r.zeitslot} — ${detailSlotStart}–${detailSlotEnde} Uhr`
+  const zeitslotText = r.typ === 'GRUPPE'
+    ? GRUPPEN_ZEIT_ANZEIGE
+    : `Slot ${r.zeitslot} — ${detailSlotStart}–${detailSlotEnde} Uhr`
   const kundenName = r.kunden ? `${r.kunden.vorname} ${r.kunden.nachname}` : '—'
 
   return (

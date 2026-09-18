@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { berechneGesamtbetrag, berechneAnzahlung, berechneGruppenBetrag, gruppenPreisProKind } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
-import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen } from '@/lib/utils/zeitslots'
+import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen, istWochenende, GRUPPEN_ZEIT_ANZEIGE } from '@/lib/utils/zeitslots'
 import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
@@ -58,6 +58,9 @@ export async function reservierungErstellen(
   }
   if (istGeschlossen(new Date(datum + 'T00:00:00'))) {
     return { fehler: 'Der Park ist an diesem Tag geschlossen — keine Reservierung möglich.' }
+  }
+  if (typ === 'GRUPPE' && istWochenende(new Date(datum + 'T00:00:00'))) {
+    return { fehler: 'Gruppenbuchungen sind nur Montag bis Freitag möglich, nicht am Wochenende.' }
   }
 
   // Loge-Info laden: Verfügbarkeitsregel + reale Kapazität
@@ -117,7 +120,7 @@ export async function reservierungErstellen(
   // Staffelpreise und keine Anzahlung (kein Online-Zahlvorgang für GRUPPE)
   const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
   const gesamtbetrag = typ === 'GRUPPE'
-    ? berechneGruppenBetrag(kinderAnzahl)
+    ? berechneGruppenBetrag(kinderAnzahl, erwachseneAnzahl)
     : berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
   const anzahlungBetrag = typ === 'GRUPPE' ? 0 : berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = typ === 'GRUPPE' ? gruppenPreisProKind(kinderAnzahl) : (weekend ? 27.0 : 23.0)
@@ -274,7 +277,7 @@ export async function reservierungErstellen(
       }
     }
     const smsText = typ === 'GRUPPE'
-      ? `Hallo ${vorname}, Ihre Gruppenbuchung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist vorgemerkt. Bei Fragen: 0202 2623339`
+      ? `Hallo ${vorname}, Ihre Gruppenbuchung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${GRUPPEN_ZEIT_ANZEIGE}) für ${kinderAnzahl} Kinder ist vorgemerkt. Bei Fragen: 0202 2623339`
       : smsLink
       ? `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bitte hier bezahlen um den Termin zu sichern: ${smsLink}`
       : `Hallo ${vorname}, Ihre Reservierung bei Upsalla Kinderpark Wuppertal am ${datumAnzeige} (${zeitAnzeige}) für ${kinderAnzahl} Kinder ist bestätigt. Anzahlung: ${anzahlungBetrag.toFixed(2)} €. Bei Fragen: 0202 2623339`
@@ -365,7 +368,7 @@ export async function reservierungAktualisieren(
 
   const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
   const gesamtbetrag = typ === 'GRUPPE'
-    ? berechneGruppenBetrag(kinderAnzahl)
+    ? berechneGruppenBetrag(kinderAnzahl, erwachseneAnzahl)
     : berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
   const anzahlungBetrag = typ === 'GRUPPE' ? 0 : berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = typ === 'GRUPPE' ? gruppenPreisProKind(kinderAnzahl) : (weekend ? 27.0 : 23.0)

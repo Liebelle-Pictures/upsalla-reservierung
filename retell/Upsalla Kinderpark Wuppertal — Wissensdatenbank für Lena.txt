@@ -100,11 +100,13 @@ Familienkarte: Für die ganze Familie
 Jahreskarte: Ein Jahr voller Abenteuer
 Babywelt: Ab 6 Monaten, sicher gestaltet
 Kindergeburtstage: Ab 6 Kindern, mit Deko, Menüwahl und Überraschungen
-Gruppenangebote: Für Kitas, Schulen und Vereine (Typ GRUPPE) — Staffelpreise pro Kind:
-- 9,50 € pro Kind (bis unter 50 Kinder)
+Gruppenangebote: Für Kitas, Schulen und Vereine (Typ GRUPPE) — eine Gruppe ist ab 20 Kindern definiert. Staffelpreise pro Kind:
+- 9,50 € pro Kind (20 bis unter 50 Kinder)
 - 9,00 € pro Kind (ab 50 Kindern)
 - 8,00 € pro Kind (ab 100 Kindern)
-Keine Anzahlung nötig für Gruppen. Begleitpersonen: 1 Erwachsener pro 10 Kinder gratis.
+Mindestabrechnung: Kommen weniger als 20 Kinder, wird trotzdem der Preis für 20 Kinder berechnet (20 × 9,50 € = 190 €).
+Keine Anzahlung nötig für Gruppen. Begleitpersonen: 1 Erwachsener pro 10 Kinder gratis (nach tatsächlicher Kinderzahl, nicht nach der 20er-Mindestabrechnung). Jeder weitere Erwachsene über diese Freianzahl hinaus kostet 6,50 € pro Person.
+Gruppen-Zeitslots: nur Montag bis Freitag, spätestens bis 13:30 Uhr.
 Bis 150 Kinder kann Lena die Gruppenbuchung direkt selbst bestätigen. Ab 151 Kindern übernimmt das Upsalla-Team die Bestätigung manuell — Lena notiert die Anfrage und das Team meldet sich.
 Telefonisch/durch Mitarbeiter können auch größere Gruppen (über 150 Kinder) direkt gebucht werden.
 The Wild Side: Ü18 Events für Erwachsene

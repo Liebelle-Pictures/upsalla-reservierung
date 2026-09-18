@@ -50,6 +50,13 @@ export function zeitslotZeitraum(zeitslot: number, istTeuerterTag: boolean): { s
   return { start: '15:00', ende: '19:00' }
 }
 
+// Gruppenbuchungen laufen technisch über zeitslot=1 (wie jede andere Wochentag-Buchung),
+// die tatsächliche Uhrzeit ist aber flexibel/vom Team festgelegt (spätestens bis 13:30 Uhr) —
+// deshalb beim Anzeigen NIE die normale zeitslotZeitraum()-Zeit (15:00–19:00) zeigen, sondern
+// diesen Text. Überall verwenden, wo die Uhrzeit EINER konkreten Reservierung angezeigt wird
+// (Detailansicht, SMS) — nicht in den Kalender-Spaltenköpfen, die sind slot-weit, nicht loge-weit.
+export const GRUPPEN_ZEIT_ANZEIGE = 'vormittags, genaue Uhrzeit nach Absprache (bis spätestens 13:30 Uhr)'
+
 // Prüft loge-spezifische Verfügbarkeitsregeln (z.B. "Runde Tische unten": an jedem
 // Wochentag verfügbar, am Wochenende aber nur vormittags/Slot 1, nicht nachmittags)
 export function logeIstVerfuegbarFuerSlot(
@@ -62,6 +69,13 @@ export function logeIstVerfuegbarFuerSlot(
     const tag = datum.getDay()
     const istWochenende = tag === 0 || tag === 6
     return !(istWochenende && zeitslot === 2)
+  }
+  // Gruppenbuchungen: nur Montag bis Freitag (Upsalla-Vorgabe, 2026-09-18). Die genaue
+  // Uhrzeit ist flexibel (spätestens bis 13:30 Uhr) und wird vom Team bei der Bestätigung
+  // festgelegt — deshalb kein eigener Zeitslot, nur diese Tages-Einschränkung.
+  if (verfuegbarkeitRegel === 'NUR_WOCHENTAG') {
+    const tag = datum.getDay()
+    return tag !== 0 && tag !== 6
   }
   return true
 }

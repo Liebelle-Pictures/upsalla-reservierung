@@ -3,7 +3,7 @@ import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
-import { logeIstVerfuegbarFuerSlot, istGeschlossen } from '@/lib/utils/zeitslots'
+import { logeIstVerfuegbarFuerSlot, istGeschlossen, istWochenende } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
 
   if (istGeschlossen(new Date(neuesDatum + 'T00:00:00'))) {
     return NextResponse.json({ hinweis: 'Der Park ist an diesem Tag geschlossen. Bitte ein anderes Datum vorschlagen.' })
+  }
+  if (reservierung.typ === 'GRUPPE' && istWochenende(new Date(neuesDatum + 'T00:00:00'))) {
+    return NextResponse.json({ hinweis: 'Gruppenbuchungen sind nur Montag bis Freitag möglich, nicht am Wochenende. Bitte ein anderes Datum vorschlagen.' })
   }
 
   // loge_id aus loge_name auflösen falls nötig

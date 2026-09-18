@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung, berechneGruppenBetrag, gruppenPreisProKind } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
-import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen } from '@/lib/utils/zeitslots'
+import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen, istWochenende, GRUPPEN_ZEIT_ANZEIGE } from '@/lib/utils/zeitslots'
 import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
 import { extrahiereAnruferNummer, zuLokalesFormat } from '@/lib/lena/callerPhone'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
@@ -91,6 +91,9 @@ export async function POST(request: NextRequest) {
   }
   if (istGeschlossen(new Date(datumKorrigiert + 'T00:00:00'))) {
     return NextResponse.json({ hinweis: 'Der Park ist an diesem Tag geschlossen. Bitte ein anderes Datum vorschlagen.' })
+  }
+  if (typ === 'GRUPPE' && istWochenende(new Date(datumKorrigiert + 'T00:00:00'))) {
+    return NextResponse.json({ hinweis: 'Gruppenbuchungen sind nur Montag bis Freitag möglich, nicht am Wochenende. Bitte ein anderes Datum vorschlagen.' })
   }
 
   // loge_id aus loge_name auflösen falls nötig
@@ -197,7 +200,7 @@ export async function POST(request: NextRequest) {
 
   const weekend = await istPreisteuerterTag(new Date(datumKorrigiert + 'T00:00:00'))
   const gesamtbetrag = typ === 'GRUPPE'
-    ? berechneGruppenBetrag(kinder_anzahl)
+    ? berechneGruppenBetrag(kinder_anzahl, erwachsene)
     : berechneGesamtbetrag(kinder_anzahl, weekend, erwachsene)
   const anzahlungBetrag = typ === 'GRUPPE' ? 0 : berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = typ === 'GRUPPE' ? gruppenPreisProKind(kinder_anzahl) : (weekend ? 27.0 : 23.0)
@@ -313,7 +316,7 @@ export async function POST(request: NextRequest) {
   }
 
   const smsText = typ === 'GRUPPE'
-    ? `Hallo ${vorname}! Eure Gruppenbuchung im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Wir melden uns bei Rueckfragen. Bei Fragen: 0202 2623339`
+    ? `Hallo ${vorname}! Eure Gruppenbuchung im Upsalla Kinderpark am ${datumAnzeige} (${GRUPPEN_ZEIT_ANZEIGE}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Wir melden uns bei Rueckfragen. Bei Fragen: 0202 2623339`
     : smsLink
     ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Bitte hier bezahlen um den Termin zu sichern: ${smsLink}`
     : `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Wir melden uns in Kuerze mit dem Zahlungslink.`
