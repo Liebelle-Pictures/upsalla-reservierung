@@ -2,7 +2,13 @@
 
 import { useActionState, useState } from 'react'
 import { reservierungErstellen, type ReservierungFormState } from '@/app/actions/reservierungen'
-import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene, ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE, MINDEST_KINDER_ABRECHNUNG } from '@/lib/utils/preise'
+import {
+  berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene,
+  ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE, MINDEST_KINDER_ABRECHNUNG,
+  gruppenPreisProKind, gruppenAbrechenbareKinder, berechneGruppenFreieErwachsene, berechneGruppenZahlendErwachsene, berechneGruppenBetrag,
+  GRUPPEN_MINDEST_KINDER, GRUPPEN_ERWACHSENE_PREIS,
+} from '@/lib/utils/preise'
+import { GRUPPEN_ZEIT_ANZEIGE } from '@/lib/utils/zeitslots'
 import type { Loge } from '@/types/loge'
 import type { ZeitslotInfo } from '@/lib/utils/zeitslots'
 
@@ -25,25 +31,38 @@ const TYP_OPTIONEN_BABYWELT = [
   { wert: 'INTERN',              label: 'Intern gesperrt' },
 ]
 
+const TYP_OPTIONEN_GRUPPEN = [
+  { wert: 'GRUPPE', label: 'Gruppe (Kita/Schule)' },
+  { wert: 'INTERN', label: 'Intern gesperrt' },
+]
+
 export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Props) {
   const [state, action, pending] = useActionState<ReservierungFormState, FormData>(
     reservierungErstellen,
     undefined,
   )
-  const [kinderAnzahl, setKinderAnzahl]       = useState(6)
-  const [erwachseneAnzahl, setErwachseneAnzahl] = useState(2)
 
   const istBabywelt = loge.name.toLowerCase().includes('babywelt')
-  const typOptionen = istBabywelt ? TYP_OPTIONEN_BABYWELT : TYP_OPTIONEN_NORMAL
-  const defaultTyp  = istBabywelt ? 'BABYWELT_GEBURTSTAG' : 'GEBURTSTAG'
+  // Die "Gruppen"-Loge ist keine normale Themenloge — eigene Preise, eigene Mindestanzahl,
+  // kein "6-9 Kinder = halbe Loge"-Konzept, und "Art der Reservierung" darf hier nur GRUPPE sein.
+  const istGruppenLoge = loge.name.toLowerCase() === 'gruppen'
+  const typOptionen = istBabywelt ? TYP_OPTIONEN_BABYWELT : istGruppenLoge ? TYP_OPTIONEN_GRUPPEN : TYP_OPTIONEN_NORMAL
+  const defaultTyp  = istBabywelt ? 'BABYWELT_GEBURTSTAG' : istGruppenLoge ? 'GRUPPE' : 'GEBURTSTAG'
   const [typ, setTyp] = useState(defaultTyp)
 
+  const [kinderAnzahl, setKinderAnzahl]       = useState(istGruppenLoge ? GRUPPEN_MINDEST_KINDER : 6)
+  const [erwachseneAnzahl, setErwachseneAnzahl] = useState(2)
+
+  const istGruppe = typ === 'GRUPPE'
+
   const weekend                  = istTeuerterTag
-  const kindPreisProPerson       = weekend ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG
-  const erwachsenePreisProPerson = weekend ? ERWACHSENE_PREIS_WOCHENENDE : ERWACHSENE_PREIS_WOCHENTAG
-  const gesamtbetrag             = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
-  const anzahlung                = berechneAnzahlung(gesamtbetrag)
-  const zahlendErwachsene        = berechneZahlendErwachsene(erwachseneAnzahl)
+  const kindPreisProPerson       = istGruppe ? gruppenPreisProKind(kinderAnzahl) : (weekend ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG)
+  const erwachsenePreisProPerson = istGruppe ? GRUPPEN_ERWACHSENE_PREIS : (weekend ? ERWACHSENE_PREIS_WOCHENENDE : ERWACHSENE_PREIS_WOCHENTAG)
+  const gesamtbetrag             = istGruppe ? berechneGruppenBetrag(kinderAnzahl, erwachseneAnzahl) : berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
+  const anzahlung                = istGruppe ? 0 : berechneAnzahlung(gesamtbetrag)
+  const zahlendErwachsene        = istGruppe ? berechneGruppenZahlendErwachsene(kinderAnzahl, erwachseneAnzahl) : berechneZahlendErwachsene(erwachseneAnzahl)
+  const freieErwachsene          = istGruppe ? berechneGruppenFreieErwachsene(kinderAnzahl) : 3
+  const abrechenbareKinder       = istGruppe ? gruppenAbrechenbareKinder(kinderAnzahl) : Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG)
 
   return (
     <form action={action} className="space-y-6 max-w-xl">
@@ -56,7 +75,7 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
       <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800 space-y-1">
         <div><span className="font-semibold">Loge:</span> {loge.name}</div>
         <div><span className="font-semibold">Datum:</span> {new Date(datum + 'T00:00:00').toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
-        <div><span className="font-semibold">Zeitslot:</span> {slot.start} – {slot.ende} Uhr</div>
+        <div><span className="font-semibold">Zeitslot:</span> {istGruppenLoge ? GRUPPEN_ZEIT_ANZEIGE : `${slot.start} – ${slot.ende} Uhr`}</div>
       </div>
 
       {/* Typ */}
@@ -103,8 +122,8 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
           <input
             name="kinder_anzahl"
             type="number"
-            min={typ === 'GRUPPE' ? 1 : 6}
-            max={typ === 'GRUPPE' ? 100 : 20}
+            min={istGruppe ? GRUPPEN_MINDEST_KINDER : 6}
+            max={istGruppe ? 500 : 20}
             value={kinderAnzahl}
             onChange={(e) => setKinderAnzahl(Number(e.target.value))}
             required
@@ -124,8 +143,8 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
         </div>
       </div>
 
-      {/* Hinweis Doppelbelegung */}
-      {kinderAnzahl >= 6 && kinderAnzahl <= 9 && (
+      {/* Hinweis Doppelbelegung — gilt nicht für die Gruppen-Loge (flexible Kapazität, kein Tischkonzept) */}
+      {!istGruppe && kinderAnzahl >= 6 && kinderAnzahl <= 9 && (
         <div style={{ background: '#FEFCE8', border: '1.5px solid #FDE047', borderRadius: '10px', padding: '12px 14px', fontSize: '0.82rem', color: '#A16207' }}>
           <strong>Hinweis:</strong> Bei 6–9 Kindern belegt diese Gruppe nur einen Tisch (halbe Loge). Es kann gleichzeitig eine zweite Geburtstagsfeier in derselben Loge stattfinden. Bitte den Kunden darüber informieren.
         </div>
@@ -135,15 +154,15 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
       <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border)' }} className="space-y-2 text-sm">
         <div className="flex justify-between text-gray-600">
           <span>
-            {Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG)} Kinder × {kindPreisProPerson.toFixed(2)} €
-            {kinderAnzahl < MINDEST_KINDER_ABRECHNUNG && ` (Mindestpreis für ${MINDEST_KINDER_ABRECHNUNG})`}
+            {abrechenbareKinder} Kinder × {kindPreisProPerson.toFixed(2)} €
+            {kinderAnzahl < abrechenbareKinder && ` (Mindestpreis für ${abrechenbareKinder})`}
           </span>
-          <span>{(Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG) * kindPreisProPerson).toFixed(2)} €</span>
+          <span>{(abrechenbareKinder * kindPreisProPerson).toFixed(2)} €</span>
         </div>
         {erwachseneAnzahl > 0 && (
           <>
             <div className="flex justify-between text-gray-500">
-              <span>{Math.min(erwachseneAnzahl, 3)} Begleitperson{Math.min(erwachseneAnzahl, 3) !== 1 ? 'en' : ''} gratis</span>
+              <span>{Math.min(erwachseneAnzahl, freieErwachsene)} Begleitperson{Math.min(erwachseneAnzahl, freieErwachsene) !== 1 ? 'en' : ''} gratis</span>
               <span>0,00 €</span>
             </div>
             {zahlendErwachsene > 0 && (
@@ -159,8 +178,8 @@ export function ReservierungFormClient({ datum, loge, slot, istTeuerterTag }: Pr
           <span>{gesamtbetrag.toFixed(2)} €</span>
         </div>
         <div className="flex justify-between font-bold" style={{ color: 'var(--color-primary)' }}>
-          <span>Anzahlung (20%)</span>
-          <span>{anzahlung.toFixed(2)} €</span>
+          <span>{istGruppe ? 'Anzahlung' : 'Anzahlung (20%)'}</span>
+          <span>{istGruppe ? 'nicht nötig' : `${anzahlung.toFixed(2)} €`}</span>
         </div>
       </div>
 

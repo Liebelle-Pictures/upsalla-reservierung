@@ -2,8 +2,13 @@
 
 import { useActionState, useState } from 'react'
 import { reservierungAktualisieren, type BearbeitenState } from '@/app/actions/reservierungen'
-import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene, ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE, MINDEST_KINDER_ABRECHNUNG } from '@/lib/utils/preise'
-import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
+import {
+  berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene,
+  ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE, MINDEST_KINDER_ABRECHNUNG,
+  gruppenPreisProKind, gruppenAbrechenbareKinder, berechneGruppenFreieErwachsene, berechneGruppenZahlendErwachsene, berechneGruppenBetrag,
+  GRUPPEN_MINDEST_KINDER, GRUPPEN_ERWACHSENE_PREIS,
+} from '@/lib/utils/preise'
+import { zeitslotZeitraum, GRUPPEN_ZEIT_ANZEIGE } from '@/lib/utils/zeitslots'
 import Link from 'next/link'
 
 const TYP_OPTIONEN = [
@@ -12,6 +17,11 @@ const TYP_OPTIONEN = [
   { wert: 'GRUPPE',              label: 'Gruppe (Kita/Schule)' },
   { wert: 'WILD_SIDE',           label: 'Wild Side (Ü18)' },
   { wert: 'INTERN',              label: 'Intern gesperrt' },
+]
+
+const TYP_OPTIONEN_GRUPPEN = [
+  { wert: 'GRUPPE', label: 'Gruppe (Kita/Schule)' },
+  { wert: 'INTERN', label: 'Intern gesperrt' },
 ]
 
 interface Props {
@@ -39,12 +49,20 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
   const [erwachseneAnzahl, setErwachseneAnzahl] = useState(r.erwachsene_anzahl)
   const [typ, setTyp] = useState(r.typ)
 
+  // Die "Gruppen"-Loge ist keine normale Themenloge — eigene Preise, eigene Mindestanzahl,
+  // kein "6-9 Kinder = halbe Loge"-Konzept, und "Art der Reservierung" darf hier nur GRUPPE sein.
+  const istGruppenLoge = r.logen?.name?.toLowerCase() === 'gruppen'
+  const typOptionen = istGruppenLoge ? TYP_OPTIONEN_GRUPPEN : TYP_OPTIONEN
+  const istGruppe = typ === 'GRUPPE'
+
   const weekend                  = istTeuerterTag
-  const kindPreisProPerson       = weekend ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG
-  const erwachsenePreisProPerson = weekend ? ERWACHSENE_PREIS_WOCHENENDE : ERWACHSENE_PREIS_WOCHENTAG
-  const gesamtbetrag             = berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
-  const anzahlung                = berechneAnzahlung(gesamtbetrag)
-  const zahlendErwachsene        = berechneZahlendErwachsene(erwachseneAnzahl)
+  const kindPreisProPerson       = istGruppe ? gruppenPreisProKind(kinderAnzahl) : (weekend ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG)
+  const erwachsenePreisProPerson = istGruppe ? GRUPPEN_ERWACHSENE_PREIS : (weekend ? ERWACHSENE_PREIS_WOCHENENDE : ERWACHSENE_PREIS_WOCHENTAG)
+  const gesamtbetrag             = istGruppe ? berechneGruppenBetrag(kinderAnzahl, erwachseneAnzahl) : berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
+  const anzahlung                = istGruppe ? 0 : berechneAnzahlung(gesamtbetrag)
+  const zahlendErwachsene        = istGruppe ? berechneGruppenZahlendErwachsene(kinderAnzahl, erwachseneAnzahl) : berechneZahlendErwachsene(erwachseneAnzahl)
+  const freieErwachsene          = istGruppe ? berechneGruppenFreieErwachsene(kinderAnzahl) : 3
+  const abrechenbareKinder       = istGruppe ? gruppenAbrechenbareKinder(kinderAnzahl) : Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG)
 
   const datumAnzeige = new Date(r.datum + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
@@ -62,7 +80,7 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
       <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-1">
         <div><span className="font-semibold text-gray-800">Loge:</span> {r.logen?.name}</div>
         <div><span className="font-semibold text-gray-800">Datum:</span> {datumAnzeige}</div>
-        <div><span className="font-semibold text-gray-800">Zeitslot:</span> {slotStart} – {slotEnde} Uhr</div>
+        <div><span className="font-semibold text-gray-800">Zeitslot:</span> {istGruppenLoge ? GRUPPEN_ZEIT_ANZEIGE : `${slotStart} – ${slotEnde} Uhr`}</div>
         <p className="text-xs text-gray-400 pt-1">Loge, Datum und Zeitslot können nicht geändert werden.</p>
       </div>
 
@@ -75,7 +93,7 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
           onChange={(e) => setTyp(e.target.value)}
           className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {TYP_OPTIONEN.map((o) => (
+          {typOptionen.map((o) => (
             <option key={o.wert} value={o.wert}>{o.label}</option>
           ))}
         </select>
@@ -132,8 +150,8 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
           <input
             name="kinder_anzahl"
             type="number"
-            min={1}
-            max={typ === 'GRUPPE' ? 100 : 20}
+            min={istGruppe ? GRUPPEN_MINDEST_KINDER : 1}
+            max={istGruppe ? 500 : 20}
             value={kinderAnzahl}
             onChange={(e) => setKinderAnzahl(Number(e.target.value))}
             required
@@ -157,15 +175,15 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
       <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border)' }} className="space-y-2 text-sm">
         <div className="flex justify-between text-gray-600">
           <span>
-            {Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG)} Kinder × {kindPreisProPerson.toFixed(2)} €
-            {kinderAnzahl < MINDEST_KINDER_ABRECHNUNG && ` (Mindestpreis für ${MINDEST_KINDER_ABRECHNUNG})`}
+            {abrechenbareKinder} Kinder × {kindPreisProPerson.toFixed(2)} €
+            {kinderAnzahl < abrechenbareKinder && ` (Mindestpreis für ${abrechenbareKinder})`}
           </span>
-          <span>{(Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG) * kindPreisProPerson).toFixed(2)} €</span>
+          <span>{(abrechenbareKinder * kindPreisProPerson).toFixed(2)} €</span>
         </div>
         {erwachseneAnzahl > 0 && (
           <>
             <div className="flex justify-between text-gray-500">
-              <span>{Math.min(erwachseneAnzahl, 3)} Begleitperson{Math.min(erwachseneAnzahl, 3) !== 1 ? 'en' : ''} gratis</span>
+              <span>{Math.min(erwachseneAnzahl, freieErwachsene)} Begleitperson{Math.min(erwachseneAnzahl, freieErwachsene) !== 1 ? 'en' : ''} gratis</span>
               <span>0,00 €</span>
             </div>
             {zahlendErwachsene > 0 && (
@@ -181,8 +199,8 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
           <span>{gesamtbetrag.toFixed(2)} €</span>
         </div>
         <div className="flex justify-between font-bold" style={{ color: 'var(--color-primary)' }}>
-          <span>Anzahlung (20%)</span>
-          <span>{anzahlung.toFixed(2)} €</span>
+          <span>{istGruppe ? 'Anzahlung' : 'Anzahlung (20%)'}</span>
+          <span>{istGruppe ? 'nicht nötig' : `${anzahlung.toFixed(2)} €`}</span>
         </div>
       </div>
 
