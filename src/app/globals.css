@@ -71,4 +71,11 @@ button, a, input, select { transition: all 0.15s ease; }
   @page { margin: 15mm; size: A4; }
   tr { page-break-inside: avoid; }
   body { background: white; }
+  /* Das Dashboard-Layout gibt html/body/dem Flex-Wrapper eine volle Viewport-Höhe (h-full)
+     und lässt <main> mit overflow-y:auto darin scrollen — auf dem Bildschirm völlig richtig,
+     aber beim Drucken kappt der Browser den Inhalt exakt auf diese Höhe, statt ihn über
+     mehrere Seiten fließen zu lassen (der Inhalt "unter dem Scrollbalken" fehlt einfach im
+     Ausdruck). Für den Druck muss die Höhe wieder natürlich/unbegrenzt werden.  */
+  html, body { height: auto !important; }
+  main { height: auto !important; overflow: visible !important; }
 }
