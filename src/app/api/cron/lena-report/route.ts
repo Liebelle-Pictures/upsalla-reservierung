@@ -3,6 +3,13 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
+// Anrufe unter dieser Dauer haben laut Stichprobenanalyse (21.09.2026) praktisch nie echten
+// Gesprächsinhalt — reines Auflegen/Verwählen, bevor ein Wort gewechselt wird. Werden als eigene
+// Kategorie ausgewiesen statt in "Kein Abschluss" versteckt, damit (a) die Gesamtzahl weiterhin
+// mit der Anrufminuten-Abrechnung übereinstimmt und (b) die Abschlussquote nicht künstlich durch
+// Anrufe gedrückt wird, bei denen nie eine Buchungsabsicht bestand.
+const KURZANRUF_SCHWELLE_SEKUNDEN = 10
+
 function formatDauer(sek: number | null): string {
   if (!sek) return '–'
   const m = Math.floor(sek / 60)
@@ -23,13 +30,21 @@ function lenaWochenreportHtml(params: {
   reserviert: number
   nichtReserviert: number
   voicemail: number
+  kurzanrufe: number
   fehlgeschlagenListe: Array<{ datum: string; dauer: number | null; zusammenfassung: string | null }>
 }): string {
-  const { vonDatum, bisDatum, gesamt, reserviert, nichtReserviert, voicemail, fehlgeschlagenListe } = params
-  const quote = gesamt > 0 ? Math.round((reserviert / gesamt) * 100) : 0
+  const { vonDatum, bisDatum, gesamt, reserviert, nichtReserviert, voicemail, kurzanrufe, fehlgeschlagenListe } = params
+  // Abschlussquote nur auf Basis echter Gespräche (ohne Mailbox, ohne Kurzanrufe unter 10 Sek.
+  // ohne Gesprächsinhalt) — sonst verzerren reine Verwähler/Auflege-Anrufe die Quote nach unten,
+  // obwohl dort nie eine Buchungsabsicht bestand. "Gesamt" bleibt trotzdem die echte Gesamtzahl
+  // aller Anrufe (Reserviert + Kein Abschluss + Kurzanrufe + Mailbox = Gesamt), damit die Zahlen
+  // weiterhin mit der Telefonrechnung/Anrufminuten übereinstimmen — nichts wird versteckt, nur
+  // sauber aufgeteilt.
+  const relevanteAnrufe = gesamt - voicemail - kurzanrufe
+  const quote = relevanteAnrufe > 0 ? Math.round((reserviert / relevanteAnrufe) * 100) : 0
 
   const fehlschlagZeilen = fehlgeschlagenListe.length === 0
-    ? '<tr><td colspan="3" style="padding:12px; text-align:center; color:#9CA3AF; font-size:13px;">Keine nicht abgeschlossenen Gespräche diese Woche.</td></tr>'
+    ? '<tr><td colspan="3" style="padding:12px; text-align:center; color:#9CA3AF; font-size:13px;">Keine nicht abgeschlossenen Gespräche mit echtem Inhalt diese Woche.</td></tr>'
     : fehlgeschlagenListe.map(a => `
         <tr>
           <td style="padding:10px 12px; font-size:13px; color:#374151; border-bottom:1px solid #F3F4F6;">${formatDatum(a.datum)}</td>
@@ -67,31 +82,43 @@ function lenaWochenreportHtml(params: {
       <td style="padding:20px 36px;">
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
-            <td width="25%" style="text-align:center;padding:16px 8px;background:#F3F4F6;border-radius:12px;margin-right:8px;">
+            <td width="32%" style="text-align:center;padding:16px 8px;background:#F3F4F6;border-radius:12px;">
               <div style="font-size:28px;font-weight:800;color:#1E1B4B;">${gesamt}</div>
               <div style="font-size:11px;color:#6B7280;margin-top:4px;">Gesamt</div>
             </td>
-            <td width="4%"></td>
-            <td width="25%" style="text-align:center;padding:16px 8px;background:#ECFDF5;border-radius:12px;">
+            <td width="2%"></td>
+            <td width="32%" style="text-align:center;padding:16px 8px;background:#ECFDF5;border-radius:12px;">
               <div style="font-size:28px;font-weight:800;color:#065F46;">${reserviert}</div>
               <div style="font-size:11px;color:#059669;margin-top:4px;">Reserviert</div>
             </td>
-            <td width="4%"></td>
-            <td width="25%" style="text-align:center;padding:16px 8px;background:#FEF2F2;border-radius:12px;">
+            <td width="2%"></td>
+            <td width="32%" style="text-align:center;padding:16px 8px;background:#FEF2F2;border-radius:12px;">
               <div style="font-size:28px;font-weight:800;color:#991B1B;">${nichtReserviert}</div>
               <div style="font-size:11px;color:#DC2626;margin-top:4px;">Kein Abschluss</div>
             </td>
-            <td width="4%"></td>
-            <td width="25%" style="text-align:center;padding:16px 8px;background:#FFFBEB;border-radius:12px;">
-              <div style="font-size:28px;font-weight:800;color:#92400E;">${voicemail}</div>
+          </tr>
+        </table>
+
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">
+          <tr>
+            <td width="49%" style="text-align:center;padding:14px 8px;background:#F4F4F5;border-radius:12px;">
+              <div style="font-size:22px;font-weight:800;color:#52525B;">${kurzanrufe}</div>
+              <div style="font-size:11px;color:#71717A;margin-top:4px;">Kurzanrufe &lt;10 Sek. (kein Gespräch)</div>
+            </td>
+            <td width="2%"></td>
+            <td width="49%" style="text-align:center;padding:14px 8px;background:#FFFBEB;border-radius:12px;">
+              <div style="font-size:22px;font-weight:800;color:#92400E;">${voicemail}</div>
               <div style="font-size:11px;color:#D97706;margin-top:4px;">Mailbox</div>
             </td>
           </tr>
         </table>
 
         <!-- Abschlussquote -->
-        <div style="margin-top:16px;background:#EEF2FF;border-radius:10px;padding:14px 16px;display:flex;align-items:center;">
+        <div style="margin-top:16px;background:#EEF2FF;border-radius:10px;padding:14px 16px;">
           <span style="font-size:13px;color:#4338CA;font-weight:600;">Abschlussquote: <strong>${quote}%</strong></span>
+          <div style="font-size:11px;color:#6366F1;margin-top:4px;line-height:1.5;">
+            Bezogen auf ${relevanteAnrufe} Anrufe mit echtem Gespräch (ohne Mailbox und ohne Kurzanrufe unter 10 Sekunden ohne Gesprächsinhalt — diese zählen weiterhin zur Gesamtzahl oben, damit sie mit der Anrufminuten-Abrechnung übereinstimmt, fließen aber nicht in die Quote ein).
+          </div>
         </div>
       </td>
     </tr>
@@ -99,7 +126,8 @@ function lenaWochenreportHtml(params: {
     <!-- Nicht abgeschlossene Gespräche -->
     <tr>
       <td style="padding:0 36px 24px;">
-        <div style="font-size:14px;font-weight:700;color:#1E1B4B;margin-bottom:12px;">Nicht abgeschlossene Gespräche</div>
+        <div style="font-size:14px;font-weight:700;color:#1E1B4B;margin-bottom:2px;">Nicht abgeschlossene Gespräche</div>
+        <div style="font-size:11px;color:#9CA3AF;margin-bottom:12px;">Nur Anrufe mit echtem Gesprächsinhalt (10 Sek. oder länger) — Kurzanrufe siehe Statistik oben.</div>
         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;">
           <tr style="background:#F9FAFB;">
             <th style="padding:10px 12px;font-size:11px;color:#6B7280;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Datum</th>
@@ -149,10 +177,17 @@ export async function GET(request: NextRequest) {
   const gesamt = liste.length
   const voicemail = liste.filter(a => a.in_voicemail).length
   const reserviert = liste.filter(a => a.reservierung_erstellt).length
-  const nichtReserviert = gesamt - reserviert - voicemail
+  // Kurzanrufe: weder Buchung noch Mailbox, UND unter der Kurzanruf-Schwelle — eigene Kategorie,
+  // siehe Kommentar bei KURZANRUF_SCHWELLE_SEKUNDEN oben.
+  const kurzanrufe = liste.filter(a =>
+    !a.reservierung_erstellt && !a.in_voicemail && (a.dauer_sekunden ?? 0) < KURZANRUF_SCHWELLE_SEKUNDEN,
+  ).length
+  // "Kein Abschluss" zeigt nur noch echte Gespräche ohne Buchung — Gesamt bleibt exakt
+  // reserviert + voicemail + kurzanrufe + nichtReserviert, nichts geht verloren.
+  const nichtReserviert = gesamt - reserviert - voicemail - kurzanrufe
 
   const fehlgeschlagenListe = liste
-    .filter(a => !a.reservierung_erstellt && !a.in_voicemail)
+    .filter(a => !a.reservierung_erstellt && !a.in_voicemail && (a.dauer_sekunden ?? 0) >= KURZANRUF_SCHWELLE_SEKUNDEN)
     .map(a => ({ datum: a.datum, dauer: a.dauer_sekunden, zusammenfassung: a.zusammenfassung }))
 
   const html = lenaWochenreportHtml({
@@ -162,6 +197,7 @@ export async function GET(request: NextRequest) {
     reserviert,
     nichtReserviert,
     voicemail,
+    kurzanrufe,
     fehlgeschlagenListe,
   })
 
@@ -174,5 +210,5 @@ export async function GET(request: NextRequest) {
     sendeEmail({ an: 'info@smartcallservice.de', betreff, html }),
   ])
 
-  return NextResponse.json({ gesendet: true, gesamt, reserviert, nichtReserviert, voicemail })
+  return NextResponse.json({ gesendet: true, gesamt, reserviert, nichtReserviert, voicemail, kurzanrufe })
 }
