@@ -30,12 +30,16 @@ export interface KundenAnfrage {
 }
 
 export async function getKundenAnfragen(): Promise<KundenAnfrage[]> {
-  const { data } = await supabaseAdmin
-    .from('kunden_anfragen')
-    .select('*')
-    .order('status', { ascending: true }) // OFFEN vor ERLEDIGT (alphabetisch zufällig passend)
-    .order('erstellt_am', { ascending: false })
-  return (data as KundenAnfrage[]) ?? []
+  // Zwei getrennte, jeweils nach Datum sortierte Abfragen statt .order('status') — Sortierung
+  // nach Status als String war alphabetisch ('ERLEDIGT' vor 'OFFEN', da E < O) und zeigte damit
+  // genau verkehrt herum an: erledigte Anfragen standen oben, offene (die eigentlich wichtigen)
+  // mussten heruntergescrollt werden. Jetzt explizit: offene Anfragen IMMER zuerst (neueste
+  // zuerst, damit der aktuellste Kundenkontakt sofort sichtbar ist), erledigte danach.
+  const [{ data: offen }, { data: erledigt }] = await Promise.all([
+    supabaseAdmin.from('kunden_anfragen').select('*').eq('status', 'OFFEN').order('erstellt_am', { ascending: false }),
+    supabaseAdmin.from('kunden_anfragen').select('*').eq('status', 'ERLEDIGT').order('erstellt_am', { ascending: false }),
+  ])
+  return [...(offen ?? []), ...(erledigt ?? [])] as KundenAnfrage[]
 }
 
 export async function getLoge(id: string): Promise<Loge | null> {
