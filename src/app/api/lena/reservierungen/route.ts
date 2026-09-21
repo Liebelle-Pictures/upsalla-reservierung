@@ -257,6 +257,13 @@ export async function POST(request: NextRequest) {
     stripe_payment_link: null,
     stripe_payment_intent_id: null,
     aktualisiert_am: new Date().toISOString(),
+    // WICHTIG: explizit null setzen, nicht weglassen. Beim Wiederverwenden einer stornierten
+    // Reservierung (.update() unten) würde ein fehlendes Feld den ALTEN Wert unverändert lassen
+    // — steckte dort z.B. noch eine Personal-User-ID aus einem früheren Import/einer früheren
+    // Buchung, wurde die neue Lena-Buchung fälschlich nicht als Lena-Buchung gezählt (erstellt_von
+    // IS NULL ist das Kriterium in getLenaStatistik() und in der Anruf-Statistik-Heuristik).
+    // Gefunden bei der Analyse der Wochenbericht-Abschlussquote vom 21.09.2026.
+    erstellt_von: null,
   }
 
   let reservierungId: string
