@@ -260,7 +260,12 @@ export async function reservierungErstellen(
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
   const { start: slotStart, ende: slotEnde } = zeitslotZeitraum(zeitslot, weekend)
-  const zeitAnzeige = `${slotStart}–${slotEnde}`
+  // Bindestrich statt Halbgeviertstrich (–) — Letzterer gehört nicht zum GSM-7-Alphabet und
+  // zwingt die gesamte SMS auf UCS-2-Encoding (67 statt 153 Zeichen pro Segment), wodurch sich
+  // die Segmentanzahl und damit die Twilio-Kosten etwa verdoppeln. zeitAnzeige wird NUR in
+  // SMS-Texten verwendet — zeitslotText (E-Mail) ist von der Segmentkosten-Problematik nicht
+  // betroffen und bleibt bewusst mit „—" formatiert.
+  const zeitAnzeige = `${slotStart}-${slotEnde}`
   const zeitslotText = `Slot ${zeitslot} — ${slotStart}–${slotEnde} Uhr`
 
   // Bestätigungs-SMS an Kunde senden — mit Zahlungslink (als Kurzlink, spart SMS-Segmente),
@@ -503,7 +508,9 @@ export async function reservierungStornieren(
   })
   const weekendStorno = await istPreisteuerterTag(terminDatum)
   const { start: stornoSlotStart, ende: stornoSlotEnde } = zeitslotZeitraum(res.zeitslot, weekendStorno)
-  const zeitAnzeige = `${stornoSlotStart}–${stornoSlotEnde}`
+  // Bindestrich statt Halbgeviertstrich — siehe Kommentar bei der ersten zeitAnzeige-Definition
+  // oben (reservierungErstellen). zeitslotText bleibt für die E-Mail unverändert.
+  const zeitAnzeige = `${stornoSlotStart}-${stornoSlotEnde}`
   const zeitslotText = `Slot ${res.zeitslot} — ${stornoSlotStart}–${stornoSlotEnde} Uhr`
 
   // Storno-SMS
@@ -511,7 +518,7 @@ export async function reservierungStornieren(
     try {
       const { sendeSMS } = await import('@/lib/twilio/client')
       const smsText = rueckerstattungBetrag > 0
-        ? `Hallo ${kunde.vorname}, Ihre Reservierung am ${datumAnzeige} (${zeitAnzeige} Uhr) wurde storniert. Die Anzahlung von ${rueckerstattungBetrag.toFixed(2)} € wird innerhalb von 5–10 Werktagen erstattet.`
+        ? `Hallo ${kunde.vorname}, Ihre Reservierung am ${datumAnzeige} (${zeitAnzeige} Uhr) wurde storniert. Die Anzahlung von ${rueckerstattungBetrag.toFixed(2)} € wird innerhalb von 5-10 Werktagen erstattet.`
         : `Hallo ${kunde.vorname}, Ihre Reservierung am ${datumAnzeige} (${zeitAnzeige} Uhr) wurde storniert. Bei Fragen: 0202 2623339`
       await sendeSMS(kunde.telefon, smsText)
     } catch (err) {

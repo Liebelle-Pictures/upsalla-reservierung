@@ -49,7 +49,9 @@ export async function GET(request: NextRequest) {
       weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
     })
     const { start: remStart, ende: remEnde } = zeitslotZeitraum(res.zeitslot, weekend)
-    const zeitAnzeige = `${remStart}–${remEnde}`
+    // Bindestrich statt Halbgeviertstrich — vermeidet UCS-2-Encoding und damit doppelte
+    // Twilio-Segmentkosten (nur Ziffern/Bindestrich sind GSM-7, "–" ist es nicht).
+    const zeitAnzeige = `${remStart}-${remEnde}`
     const restbetrag = (Number(res.gesamtbetrag) - Number(res.anzahlung_betrag)).toFixed(2)
 
     const smsText = res.status === 'BESTAETIGT_BEZAHLT'

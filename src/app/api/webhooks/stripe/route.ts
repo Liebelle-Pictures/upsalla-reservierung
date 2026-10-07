@@ -60,9 +60,12 @@ export async function POST(request: NextRequest) {
         if (kunde?.telefon) {
           try {
             const { sendeSMS } = await import('@/lib/twilio/client')
+            // Bindestrich statt Gedankenstrich/Halbgeviertstrich — "—"/"–" gehören nicht zum
+            // GSM-7-Alphabet und zwingen die gesamte SMS auf UCS-2 (67 statt 153 Zeichen pro
+            // Segment), was die Twilio-Kosten etwa verdoppelt.
             await sendeSMS(
               kunde.telefon,
-              `Hallo ${kunde.vorname}! Eure Anzahlung ist eingegangen — der Termin am ${datumAnzeige} (${start}–${ende} Uhr) ist fix! Restbetrag von ${restbetrag} € bitte am Tag der Feier vor Ort bezahlen. Bis bald!`,
+              `Hallo ${kunde.vorname}! Eure Anzahlung ist eingegangen - der Termin am ${datumAnzeige} (${start}-${ende} Uhr) ist fix! Restbetrag von ${restbetrag} € bitte am Tag der Feier vor Ort bezahlen. Bis bald!`,
             )
           } catch (err) {
             console.error('[Stripe Webhook] Zahlungsbestaetigungs-SMS fehlgeschlagen:', err)

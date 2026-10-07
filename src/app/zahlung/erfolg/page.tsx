@@ -47,7 +47,9 @@ export default async function ZahlungErfolgPage({ searchParams }: Props) {
         const weekend = await istPreisteuerterTag(new Date(res.datum + 'T00:00:00'))
         const { start: erfolgSlotStart, ende: erfolgSlotEnde } = zeitslotZeitraum(res.zeitslot, weekend)
         const zeitslotText = `Slot ${res.zeitslot} — ${erfolgSlotStart}–${erfolgSlotEnde} Uhr`
-        const zeitAnzeige = `${erfolgSlotStart}–${erfolgSlotEnde}`
+        // Bindestrich statt Halbgeviertstrich — nur für SMS relevant (GSM-7 statt UCS-2,
+        // vermeidet doppelte Segmentkosten), zeitslotText (E-Mail) bleibt unverändert.
+        const zeitAnzeige = `${erfolgSlotStart}-${erfolgSlotEnde}`
 
         // E-Mail aus Stripe Checkout übernehmen (Kunde hat sie beim Bezahlen eingegeben)
         const stripeEmail = session.customer_details?.email

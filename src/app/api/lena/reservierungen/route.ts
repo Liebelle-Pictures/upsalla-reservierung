@@ -291,7 +291,10 @@ export async function POST(request: NextRequest) {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
   const { start: lenaSlotStart, ende: lenaSlotEnde } = zeitslotZeitraum(zeitslot, weekend)
-  const zeitAnzeige = `${lenaSlotStart}–${lenaSlotEnde}`
+  // Bindestrich statt Halbgeviertstrich (–) — zwingt sonst die SMS auf UCS-2-Encoding (67 statt
+  // 153 Zeichen/Segment), wodurch sich die Twilio-Kosten etwa verdoppeln. zeitAnzeige wird auch
+  // in der Stripe-Beschreibung verwendet, dort ist der Zeichensatz irrelevant — kein Nachteil.
+  const zeitAnzeige = `${lenaSlotStart}-${lenaSlotEnde}`
 
   let zahlungsLink: string | null = null
   if (typ === 'GEBURTSTAG' || typ === 'BABYWELT_GEBURTSTAG') {
