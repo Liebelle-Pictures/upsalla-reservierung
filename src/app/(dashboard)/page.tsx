@@ -53,7 +53,7 @@ export default async function TagesansichtPage({ searchParams }: Props) {
 
   return (
     <>
-      <AutoRefresh intervalMs={30000} />
+      <AutoRefresh />
       <DatumNavigator datum={datum} />
       <Suspense fallback={<KalenderSkeleton />}>
         <Kalender datum={datum} />

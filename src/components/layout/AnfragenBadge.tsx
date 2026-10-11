@@ -30,6 +30,9 @@ function benachrichtigeAlle() {
 
 function starteFallsNoetig() {
   if (intervalId !== null) return
+  // Nicht pollen, während der Tab im Hintergrund ist — visibilitychange-Listener unten holt
+  // beim Zurückkehren sofort den aktuellen Stand nach, kein Datenverlust, nur kein Polling ins Leere.
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
   intervalId = setInterval(benachrichtigeAlle, POLL_MS)
 }
 
@@ -37,6 +40,20 @@ function stoppeFallsVerwaist() {
   if (listeners.size > 0 || intervalId === null) return
   clearInterval(intervalId)
   intervalId = null
+}
+
+function beiSichtbarkeitswechsel() {
+  if (document.visibilityState === 'visible') {
+    benachrichtigeAlle()
+    starteFallsNoetig()
+  } else if (intervalId !== null) {
+    clearInterval(intervalId)
+    intervalId = null
+  }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', beiSichtbarkeitswechsel)
 }
 
 export function AnfragenBadge({ initial = 0 }: { initial?: number }) {
