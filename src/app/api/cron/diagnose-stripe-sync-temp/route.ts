@@ -17,6 +17,36 @@ export async function GET(request: NextRequest) {
 
   const { stripe } = await import('@/lib/stripe/client')
 
+  // Vierter Modus: ?session_details=cs_xxx,cs_yyy — vollständige Session inkl. payment_intent.
+  const detailsParam = request.nextUrl.searchParams.get('session_details')
+  if (detailsParam) {
+    const ids = detailsParam.split(',').map(s => s.trim()).filter(Boolean)
+    const ergebnisse = []
+    for (const id of ids) {
+      const s = await stripe.checkout.sessions.retrieve(id)
+      ergebnisse.push({ session_id: id, payment_intent: s.payment_intent, payment_status: s.payment_status, metadata: s.metadata })
+    }
+    return NextResponse.json({ ergebnisse })
+  }
+
+  // Dritter Modus: ?events_for_session=cs_xxx — zeigt die Stripe-Events + Webhook-Zustellungs-
+  // versuche für eine konkrete Checkout Session (Teil 3 der Untersuchung).
+  const sessionParam = request.nextUrl.searchParams.get('events_for_session')
+  if (sessionParam) {
+    const events = await stripe.events.list({ limit: 20, type: 'checkout.session.completed' })
+    const treffer = events.data.filter(e => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const obj = e.data.object as any
+      return obj.id === sessionParam
+    })
+    const ergebnisse = []
+    for (const e of treffer) {
+      const versuche = await stripe.webhookEndpoints.list({ limit: 10 })
+      ergebnisse.push({ event_id: e.id, created: new Date(e.created * 1000).toISOString(), pending_webhooks: e.pending_webhooks, endpoints: versuche.data.map(w => ({ url: w.url, status: w.status })) })
+    }
+    return NextResponse.json({ gefunden: treffer.length, ergebnisse })
+  }
+
   // Zweiter Modus: ?payment_intents=pi_xxx,pi_yyy — prüft nur, ob für diese konkreten
   // Payment Intents bereits eine Rückerstattung existiert (Teil 2 der Untersuchung).
   const piParam = request.nextUrl.searchParams.get('payment_intents')
