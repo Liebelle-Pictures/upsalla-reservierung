@@ -13,8 +13,7 @@ import { AnfragenListe } from '@/components/anfragen/AnfragenListe'
 export const dynamic = 'force-dynamic'
 
 export default async function AnfragenPage() {
-  const anfragen = await getKundenAnfragen()
-  const offen = anfragen.filter(a => a.status === 'OFFEN').length
+  const { offen, erledigt } = await getKundenAnfragen()
 
   return (
     <div className="space-y-4">
@@ -23,11 +22,11 @@ export default async function AnfragenPage() {
           Anfragen
         </h1>
         <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 500 }}>
-          {offen === 0 ? 'Alles erledigt' : `${offen} offene Anfrage${offen === 1 ? '' : 'n'}`} · Anliegen, die Lena am Telefon nicht direkt lösen konnte
+          {offen.length === 0 ? 'Alles erledigt' : `${offen.length} offene Anfrage${offen.length === 1 ? '' : 'n'}`} · Anliegen, die Lena am Telefon nicht direkt lösen konnte
         </p>
       </div>
 
-      <AnfragenListe anfragen={anfragen} />
+      <AnfragenListe offen={offen} erledigt={erledigt} />
     </div>
   )
 }

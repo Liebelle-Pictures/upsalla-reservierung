@@ -29,17 +29,22 @@ export interface KundenAnfrage {
   erledigt_am: string | null
 }
 
-export async function getKundenAnfragen(): Promise<KundenAnfrage[]> {
-  // Zwei getrennte, jeweils nach Datum sortierte Abfragen statt .order('status') — Sortierung
-  // nach Status als String war alphabetisch ('ERLEDIGT' vor 'OFFEN', da E < O) und zeigte damit
-  // genau verkehrt herum an: erledigte Anfragen standen oben, offene (die eigentlich wichtigen)
-  // mussten heruntergescrollt werden. Jetzt explizit: offene Anfragen IMMER zuerst (neueste
-  // zuerst, damit der aktuellste Kundenkontakt sofort sichtbar ist), erledigte danach.
+export interface KundenAnfragenGruppen {
+  offen: KundenAnfrage[]
+  erledigt: KundenAnfrage[]
+}
+
+// Getrennt statt als eine kombinierte Liste zurückgegeben — die UI zeigt "Offen" und "Archiv"
+// (erledigt) jetzt als eigene Tabs, nicht mehr als eine lange gemeinsame Liste zum Scrollen.
+export async function getKundenAnfragen(): Promise<KundenAnfragenGruppen> {
   const [{ data: offen }, { data: erledigt }] = await Promise.all([
     supabaseAdmin.from('kunden_anfragen').select('*').eq('status', 'OFFEN').order('erstellt_am', { ascending: false }),
-    supabaseAdmin.from('kunden_anfragen').select('*').eq('status', 'ERLEDIGT').order('erstellt_am', { ascending: false }),
+    supabaseAdmin.from('kunden_anfragen').select('*').eq('status', 'ERLEDIGT').order('erledigt_am', { ascending: false }),
   ])
-  return [...(offen ?? []), ...(erledigt ?? [])] as KundenAnfrage[]
+  return {
+    offen: (offen ?? []) as KundenAnfrage[],
+    erledigt: (erledigt ?? []) as KundenAnfrage[],
+  }
 }
 
 export async function getLoge(id: string): Promise<Loge | null> {
