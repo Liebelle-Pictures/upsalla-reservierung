@@ -17,6 +17,27 @@ export async function GET(request: NextRequest) {
 
   const { stripe } = await import('@/lib/stripe/client')
 
+  // Zweiter Modus: ?payment_intents=pi_xxx,pi_yyy — prüft nur, ob für diese konkreten
+  // Payment Intents bereits eine Rückerstattung existiert (Teil 2 der Untersuchung).
+  const piParam = request.nextUrl.searchParams.get('payment_intents')
+  if (piParam) {
+    const ids = piParam.split(',').map(s => s.trim()).filter(Boolean)
+    const ergebnisse = []
+    for (const id of ids) {
+      const pi = await stripe.paymentIntents.retrieve(id, { expand: ['latest_charge'] })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const charge = pi.latest_charge as any
+      ergebnisse.push({
+        payment_intent: id,
+        status: pi.status,
+        amount: pi.amount,
+        refunded: charge?.refunded ?? false,
+        amount_refunded: charge?.amount_refunded ?? 0,
+      })
+    }
+    return NextResponse.json({ ergebnisse })
+  }
+
   const sessions: Array<{ id: string; created: number; payment_status: string | null; metadata: Record<string, string> | null; customer_email: string | null | undefined }> = []
   let startingAfter: string | undefined
   do {
