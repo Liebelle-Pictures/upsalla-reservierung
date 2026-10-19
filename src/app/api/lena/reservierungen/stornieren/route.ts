@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     const smsText = rueckerstattung
       ? `Hallo ${kunde.vorname}, Ihre Reservierung bei Upsalla am ${datumAnzeige} wurde storniert. Die Anzahlung von ${Number(reservierung.anzahlung_betrag).toFixed(2)} EUR wird in 5-10 Werktagen erstattet.`
-      : `Hallo ${kunde.vorname}, Ihre Reservierung bei Upsalla am ${datumAnzeige} wurde storniert. Gemaess unserer Stornobedingungen kann die Anzahlung leider nicht erstattet werden.`
+      : `Hallo ${kunde.vorname}, Ihre Reservierung bei Upsalla am ${datumAnzeige} wurde storniert. Gemäß unserer Stornobedingungen kann die Anzahlung leider nicht erstattet werden.`
 
     await sendeSMS(kunde.telefon, smsText)
   }

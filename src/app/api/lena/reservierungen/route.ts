@@ -334,13 +334,13 @@ export async function POST(request: NextRequest) {
   }
 
   const smsText = typ === 'GRUPPE'
-    ? `Hallo ${vorname}! Eure Gruppenbuchung im Upsalla Kinderpark am ${datumAnzeige} (${GRUPPEN_ZEIT_ANZEIGE}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Wir melden uns bei Rueckfragen. Bei Fragen: 0202 2623339`
+    ? `Hallo ${vorname}! Eure Gruppenbuchung im Upsalla Kinderpark am ${datumAnzeige} (${GRUPPEN_ZEIT_ANZEIGE}) für ${kinder_anzahl} Kinder ist vorgemerkt. Wir melden uns bei Rückfragen. Bei Fragen: 0202 2623339`
     : smsLink
-    // "binnen 24 Std." statt nur "bitte bezahlen" — der Link ist technisch exakt 24h gueltig
-    // (Stripe-Maximum fuer mode=payment), die Zahlungserinnerung/Stornierung nach weiteren 24h
+    // "binnen 24 Std." statt nur "bitte bezahlen" — der Link ist technisch exakt 24h gültig
+    // (Stripe-Maximum für mode=payment), die Zahlungserinnerung/Stornierung nach weiteren 24h
     // baut genau auf dieser Frist auf (siehe /api/cron/lena-zahlungserinnerung).
-    ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Bitte Anzahlung von ${anzahlungBetrag.toFixed(2)} Euro binnen 24 Std. zahlen, sonst verfaellt die Reservierung: ${smsLink}`
-    : `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Wir melden uns in Kuerze mit dem Zahlungslink.`
+    ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) für ${kinder_anzahl} Kinder ist vorgemerkt. Bitte Anzahlung von ${anzahlungBetrag.toFixed(2)} Euro binnen 24 Std. zahlen, sonst verfällt die Reservierung: ${smsLink}`
+    : `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) für ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Wir melden uns in Kürze mit dem Zahlungslink.`
 
   await sendeSMS(telefon, smsText)
 

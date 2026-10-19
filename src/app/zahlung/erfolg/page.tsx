@@ -73,7 +73,7 @@ export default async function ZahlungErfolgPage({ searchParams }: Props) {
             try {
               await sendeSMS(
                 kunde.telefon,
-                `Hallo ${vorname}! Eure Anzahlung von ${Number(res.anzahlung_betrag).toFixed(2)} Euro fuer den Geburtstag am ${datumAnzeige} (${zeitAnzeige} Uhr) ist eingegangen. Euer Termin ist jetzt fest gebucht! Bis bald im Upsalla Kinderpark.`,
+                `Hallo ${vorname}! Eure Anzahlung von ${Number(res.anzahlung_betrag).toFixed(2)} Euro für den Geburtstag am ${datumAnzeige} (${zeitAnzeige} Uhr) ist eingegangen. Euer Termin ist jetzt fest gebucht! Bis bald im Upsalla Kinderpark.`,
               )
             } catch (e) {
               console.error('[Twilio] SMS-Fehler nach Zahlung:', e)

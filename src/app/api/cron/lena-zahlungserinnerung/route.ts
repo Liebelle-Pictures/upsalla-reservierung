@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
 
       await sendeSMS(
         kunde.telefon,
-        `Hallo ${kunde.vorname}! Erinnerung: Anzahlung von ${Number(r.anzahlung_betrag).toFixed(2)} Euro fuer euren Termin am ${datumAnzeige} steht noch aus. Ohne Zahlung binnen 24 Std. wird die Reservierung storniert: ${smsLink}`,
+        `Hallo ${kunde.vorname}! Erinnerung: Anzahlung von ${Number(r.anzahlung_betrag).toFixed(2)} Euro für euren Termin am ${datumAnzeige} steht noch aus. Ohne Zahlung binnen 24 Std. wird die Reservierung storniert: ${smsLink}`,
       )
       erinnert++
     } catch (e) {

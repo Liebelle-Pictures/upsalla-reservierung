@@ -55,8 +55,8 @@ export async function GET(request: NextRequest) {
     const restbetrag = (Number(res.gesamtbetrag) - Number(res.anzahlung_betrag)).toFixed(2)
 
     const smsText = res.status === 'BESTAETIGT_BEZAHLT'
-      ? `Hallo ${kunde.vorname}! Erinnerung: Euer Geburtstag im Upsalla Kinderpark Wuppertal ist uebermorgen, ${datumAnzeige} von ${zeitAnzeige} Uhr. Bitte ${restbetrag} Euro vor Ort bezahlen. Wir freuen uns auf euch! Tel: 0202 2623339`
-      : `Hallo ${kunde.vorname}! Erinnerung: Euer Geburtstag im Upsalla Kinderpark ist uebermorgen, ${datumAnzeige} von ${zeitAnzeige} Uhr. Bitte beachtet: Die Anzahlung ist noch ausstehend. Tel: 0202 2623339`
+      ? `Hallo ${kunde.vorname}! Erinnerung: Euer Geburtstag im Upsalla Kinderpark Wuppertal ist übermorgen, ${datumAnzeige} von ${zeitAnzeige} Uhr. Bitte ${restbetrag} Euro vor Ort bezahlen. Wir freuen uns auf euch! Tel: 0202 2623339`
+      : `Hallo ${kunde.vorname}! Erinnerung: Euer Geburtstag im Upsalla Kinderpark ist übermorgen, ${datumAnzeige} von ${zeitAnzeige} Uhr. Bitte beachtet: Die Anzahlung ist noch ausstehend. Tel: 0202 2623339`
 
     try {
       await sendeSMS(kunde.telefon, smsText)

@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 
   await sendeSMS(
     kunde.telefon,
-    `Hallo ${kunde.vorname}! Hier ist euer Zahlungslink fuer den Termin am ${datumAnzeige}. Bitte Anzahlung von ${reservierung.anzahlung_betrag.toFixed(2)} Euro binnen 24 Std. zahlen: ${smsLink}`,
+    `Hallo ${kunde.vorname}! Hier ist euer Zahlungslink für den Termin am ${datumAnzeige}. Bitte Anzahlung von ${reservierung.anzahlung_betrag.toFixed(2)} Euro binnen 24 Std. zahlen: ${smsLink}`,
   )
 
   return NextResponse.json({ erfolg: true, hinweis: 'Neuer Zahlungslink wurde per SMS verschickt.' })
