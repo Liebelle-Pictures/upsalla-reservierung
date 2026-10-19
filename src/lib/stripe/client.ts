@@ -12,9 +12,21 @@ export interface AnzahlungsSessionParams {
   kundenEmail?: string
 }
 
+export interface AnzahlungsSession {
+  url: string
+  id: string
+}
+
+// Checkout Sessions im mode=payment sind laut Stripe-API hart auf maximal 24 Stunden Gültigkeit
+// begrenzt (expires_at: "30 minutes to 24 hours after Checkout Session creation") — das ist keine
+// Einstellung von uns, sondern eine Stripe-Plattformgrenze. Explizit gesetzt statt sich auf
+// Stripes Default zu verlassen, weil die Zahlungserinnerungs-Logik (zahlungserinnerung-Cron)
+// sich exakt darauf verlässt, dass jeder Link, den wir verschicken, wirklich 24h funktioniert.
+const GUELTIGKEIT_SEKUNDEN = 24 * 60 * 60
+
 export async function erstelleAnzahlungsSession(
   params: AnzahlungsSessionParams,
-): Promise<string> {
+): Promise<AnzahlungsSession> {
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: [
@@ -29,6 +41,7 @@ export async function erstelleAnzahlungsSession(
     ],
     metadata: { reservierung_id: params.reservierungId },
     customer_email: params.kundenEmail ?? undefined,
+    expires_at: Math.floor(Date.now() / 1000) + GUELTIGKEIT_SEKUNDEN,
     // Stornierungsbedingungen direkt auf der Checkout-Seite — rechtlich informiert vor Zahlung
     custom_text: {
       submit: {
@@ -39,7 +52,20 @@ export async function erstelleAnzahlungsSession(
     cancel_url: `${process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL}/zahlung/abgebrochen`,
   })
 
-  return session.url!
+  return { url: session.url!, id: session.id }
+}
+
+// Session vorzeitig ungültig machen — genutzt bei der automatischen Stornierung wegen
+// ausbleibender Zahlung, damit ein spät eintreffender Zahlungsversuch auf dem ALTEN Link nicht
+// doch noch durchgeht, nachdem die Reservierung in Freizo schon storniert/der Slot freigegeben
+// wurde. Wenn die Session technisch schon abgelaufen/bezahlt/ungültig ist, wirft Stripe einen
+// Fehler — das ist unkritisch (Ziel bereits erreicht), deshalb hier bewusst abgefangen.
+export async function verfalleSession(sessionId: string): Promise<void> {
+  try {
+    await stripe.checkout.sessions.expire(sessionId)
+  } catch (e) {
+    console.error('[Stripe] Session konnte nicht verfallen werden (vermutlich bereits abgelaufen):', e)
+  }
 }
 
 // Vollständige Rückerstattung der Anzahlung via Stripe

@@ -233,18 +233,19 @@ export async function reservierungErstellen(
 
       const beschreibung = `Anzahlung Geburtstag – ${loge.data?.name ?? 'Loge'}, ${new Date(datum + 'T00:00:00').toLocaleDateString('de-DE')}`
 
-      stripeUrl = await erstelleAnzahlungsSession({
+      const session = await erstelleAnzahlungsSession({
         betragCent: Math.round(anzahlungBetrag * 100),
         reservierungId: reservierung.id,
         beschreibung,
         kundenEmail: email ?? undefined,
       })
+      stripeUrl = session.url
 
       console.log('[Stripe] URL generiert:', stripeUrl)
 
       const { error: updateError } = await supabaseAdmin
         .from('reservierungen')
-        .update({ stripe_payment_link: stripeUrl })
+        .update({ stripe_payment_link: stripeUrl, stripe_session_id: session.id })
         .eq('id', reservierung.id)
 
       if (updateError) {

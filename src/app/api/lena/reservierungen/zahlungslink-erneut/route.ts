@@ -56,21 +56,34 @@ export async function POST(request: NextRequest) {
   })
 
   let zahlungsLink: string
+  let sessionId: string
   try {
-    zahlungsLink = await erstelleAnzahlungsSession({
+    const session = await erstelleAnzahlungsSession({
       betragCent: Math.round(reservierung.anzahlung_betrag * 100),
       reservierungId: reservierung.id,
       beschreibung: `Anzahlung Geburtstag Upsalla – ${datumAnzeige}`,
       kundenEmail: kunde.email ?? undefined,
     })
+    zahlungsLink = session.url
+    sessionId = session.id
   } catch (e) {
     console.error('[Zahlungslink erneut] Stripe-Fehler:', e)
     return NextResponse.json({ hinweis: 'Zahlungslink konnte gerade nicht erstellt werden, bitte später erneut versuchen.' })
   }
 
+  // zahlungslink_erstellt_am/zahlungserinnerung_gesendet_am zurücksetzen — der Kunde ruft
+  // gerade aktiv an, die automatische 24h/48h-Zahlungserinnerung (siehe
+  // /api/cron/lena-zahlungserinnerung) soll wieder von vorne starten statt den alten,
+  // ggf. schon fast abgelaufenen Countdown weiterlaufen zu lassen.
   await supabaseAdmin
     .from('reservierungen')
-    .update({ stripe_payment_link: zahlungsLink, aktualisiert_am: new Date().toISOString() })
+    .update({
+      stripe_payment_link: zahlungsLink,
+      stripe_session_id: sessionId,
+      zahlungslink_erstellt_am: new Date().toISOString(),
+      zahlungserinnerung_gesendet_am: null,
+      aktualisiert_am: new Date().toISOString(),
+    })
     .eq('id', reservierung.id)
 
   let smsLink = zahlungsLink
@@ -82,7 +95,7 @@ export async function POST(request: NextRequest) {
 
   await sendeSMS(
     kunde.telefon,
-    `Hallo ${kunde.vorname}! Hier ist euer Zahlungslink für den Termin am ${datumAnzeige}. Anzahlung: ${reservierung.anzahlung_betrag.toFixed(2)} Euro. Bitte hier bezahlen um den Termin zu sichern: ${smsLink}`,
+    `Hallo ${kunde.vorname}! Hier ist euer Zahlungslink fuer den Termin am ${datumAnzeige}. Bitte Anzahlung von ${reservierung.anzahlung_betrag.toFixed(2)} Euro binnen 24 Std. zahlen: ${smsLink}`,
   )
 
   return NextResponse.json({ erfolg: true, hinweis: 'Neuer Zahlungslink wurde per SMS verschickt.' })

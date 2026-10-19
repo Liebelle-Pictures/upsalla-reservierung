@@ -299,15 +299,23 @@ export async function POST(request: NextRequest) {
   let zahlungsLink: string | null = null
   if (typ === 'GEBURTSTAG' || typ === 'BABYWELT_GEBURTSTAG') {
     try {
-      zahlungsLink = await erstelleAnzahlungsSession({
+      const session = await erstelleAnzahlungsSession({
         betragCent: Math.round(anzahlungBetrag * 100),
         reservierungId,
         beschreibung: `Anzahlung Geburtstag Upsalla – ${datumAnzeige} (${zeitAnzeige})`,
         kundenEmail: email as string | undefined,
       })
+      zahlungsLink = session.url
+      // zahlungslink_erstellt_am startet die Uhr für die automatische Zahlungserinnerung
+      // (24h) und Stornierung (48h) — siehe /api/cron/lena-zahlungserinnerung. Nur bei
+      // Lena-Buchungen relevant (angenommen_von wird weiter unten auf 'KI LENA' gesetzt).
       await supabaseAdmin
         .from('reservierungen')
-        .update({ stripe_payment_link: zahlungsLink })
+        .update({
+          stripe_payment_link: zahlungsLink,
+          stripe_session_id: session.id,
+          zahlungslink_erstellt_am: new Date().toISOString(),
+        })
         .eq('id', reservierungId)
     } catch (e) {
       console.error('[Stripe] Fehler beim Erstellen der Session:', e)
@@ -328,7 +336,10 @@ export async function POST(request: NextRequest) {
   const smsText = typ === 'GRUPPE'
     ? `Hallo ${vorname}! Eure Gruppenbuchung im Upsalla Kinderpark am ${datumAnzeige} (${GRUPPEN_ZEIT_ANZEIGE}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Wir melden uns bei Rueckfragen. Bei Fragen: 0202 2623339`
     : smsLink
-    ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Bitte hier bezahlen um den Termin zu sichern: ${smsLink}`
+    // "binnen 24 Std." statt nur "bitte bezahlen" — der Link ist technisch exakt 24h gueltig
+    // (Stripe-Maximum fuer mode=payment), die Zahlungserinnerung/Stornierung nach weiteren 24h
+    // baut genau auf dieser Frist auf (siehe /api/cron/lena-zahlungserinnerung).
+    ? `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Bitte Anzahlung von ${anzahlungBetrag.toFixed(2)} Euro binnen 24 Std. zahlen, sonst verfaellt die Reservierung: ${smsLink}`
     : `Hallo ${vorname}! Euer Geburtstag im Upsalla Kinderpark am ${datumAnzeige} (${zeitAnzeige}) fuer ${kinder_anzahl} Kinder ist vorgemerkt. Anzahlung: ${anzahlungBetrag.toFixed(2)} Euro. Wir melden uns in Kuerze mit dem Zahlungslink.`
 
   await sendeSMS(telefon, smsText)
