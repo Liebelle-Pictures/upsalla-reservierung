@@ -100,9 +100,12 @@ export function SchrittLoge({ datum, tag, laedt, fehler, hinweis, zeitslot, loge
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
                           bis {l.max_kinder} Kinder
                           {l.ist_babywelt && <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs font-bold text-pink-700">Babywelt</span>}
+                        </span>
+                        {/* Belegungs-Etikett immer in eigener Zeile → alle Karten gleich aufgebaut */}
+                        <span className="mt-1.5 block">
                           {l.geteilt
-                            ? <span className="inline-flex items-center gap-1 rounded-full bg-ups-creme px-2 py-0.5 text-xs font-bold text-[#6b4a00] ring-1 ring-ups-gelb/60"><GeteiltSymbol className="h-3.5 w-3.5" />{TEXT_GETEILT_KARTE}</span>
-                            : <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-bold text-ups-gruen ring-1 ring-green-200">{TEXT_GANZ}</span>}
+                            ? <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-ups-creme px-2 py-0.5 text-xs font-bold text-[#6b4a00] ring-1 ring-ups-gelb/60"><GeteiltSymbol className="h-3.5 w-3.5" />{TEXT_GETEILT_KARTE}</span>
+                            : <span className="inline-flex whitespace-nowrap rounded-full bg-green-50 px-2 py-0.5 text-xs font-bold text-ups-gruen ring-1 ring-green-200">{TEXT_GANZ}</span>}
                         </span>
                       </span>
                       <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${aktiv ? 'bg-ups-blau text-white' : 'ring-2 ring-ups-hell'}`}>

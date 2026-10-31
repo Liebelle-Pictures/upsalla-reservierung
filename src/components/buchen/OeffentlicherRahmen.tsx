@@ -10,7 +10,7 @@ export function OeffentlicherRahmen({ children, untertitel = 'Kindergeburtstag o
   return (
     <div className={`${fredoka.variable} flex min-h-full flex-col bg-gradient-to-b from-ups-hell via-ups-eis to-white`}>
       <header className="px-3 pb-2 pt-4 sm:pt-6">
-        <div className="mx-auto flex max-w-2xl items-center gap-3 sm:gap-4">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 sm:gap-4">
           <a href={UPSALLA_WEBSITE_URL} target="_top" className="shrink-0" aria-label="Upsalla Kinderpark Startseite">
             {/* eslint-disable-next-line @next/next/no-img-element -- statisches Logo, kein Layout-Shift dank fester Größe */}
             <img src="/buchen/upsalla-logo.png" alt="Upsalla Kinderpark" width={96} height={58} className="h-[58px] w-[96px] sm:h-[68px] sm:w-[112px]" />
@@ -22,7 +22,7 @@ export function OeffentlicherRahmen({ children, untertitel = 'Kindergeburtstag o
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-3 pb-6 pt-2 sm:pb-10">{children}</main>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-3 pb-6 pt-2 sm:pb-10">{children}</main>
 
       <footer className="border-t border-ups-hell bg-white/70 px-3 py-5 text-center text-sm text-gray-500">
         <p>
