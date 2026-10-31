@@ -32,22 +32,26 @@ datele de contact și plătesc **Anzahlung 20%** prin Stripe Checkout. Rezervare
   (Stripe, webhook, disponibilitate) trebuie să păstreze comportamentul actual pentru Lena și staff.
 - SMS-uri: doar caractere GSM-7 (fără „–” „—”, vezi comentariile existente), linkuri scurte.
 
-## 2. Date existente (verificate în cod, 28.10.2026)
+## 2. Date existente (verificate în cod 28.10.2026, logen live 31.10.2026)
 
-**Logen** (tabel `logen`, standort Wuppertal `00000000-0000-0000-0000-000000000001`), 12 în total:
-- 7 loje tematice (Paw Patrol Jungs, Paw Patrol Mädchen, Marvel Spiderman, Anna & Elsa,
-  Safari, Einhorn Schloss, Einhorn Regenbogen), max 16 copii, 2 tische
-- 2 Babywelt (Babywelt Junge, Babywelt Märchen), `ist_babywelt=true`, max 20
-- BBQ Zelt: `kapazitaet_flexibel=true`, un singur grup pe slot
-- Runde Tische unten: max 20, cu regulă de disponibilitate pe weekend
-- Gruppen: `kapazitaet_flexibel`, `NUR_WOCHENTAG`. **Online: NU.**
+**Logen** (tabel `logen`, standort Wuppertal `00000000-0000-0000-0000-000000000001`), 12 în total.
+Valori live, verificate de Valeriu pe 31.10.2026 (toate `aktiv = true`):
 
-⚠️ Migrația 004 setează pentru „Runde Tische unten” regula `SA_SO_SLOT1`, dar codul
-(`logeIstVerfuegbarFuerSlot`) cunoaște doar `KEIN_WE_NACHMITTAG` și `NUR_WOCHENTAG`.
-Înainte de faza 2, cere-i lui Valeriu rezultatul acestui query și adaptează-te după valorile reale:
-```sql
-select name, max_kinder, ist_babywelt, kapazitaet_flexibel, verfuegbarkeit_regel, aktiv from logen order by name;
-```
+| Lojă | max_kinder | ist_babywelt | kapazitaet_flexibel | verfuegbarkeit_regel | online |
+|---|---|---|---|---|---|
+| Anna & Elsa, Einhorn Regenbogen, Einhorn Schloss, Marvel Spiderman, Paw Patrol Jungs, Paw Patrol Mädchen, Safari | 16 | false | false | NULL | da |
+| Babywelt Junge, Babywelt Märchen | 20 | true | false | NULL | da |
+| BBQ Zelt | 20 | false | true | NULL | da |
+| Runde Tische unten | 18 | false | false | `KEIN_WE_NACHMITTAG` | da |
+| Gruppen | 150 | false | true | `NUR_WOCHENTAG` | **NU** (`online_buchbar = false`) |
+
+✅ Regula `SA_SO_SLOT1` din migrația 004 e învechită. În DB e `KEIN_WE_NACHMITTAG`, pe care
+`logeIstVerfuegbarFuerSlot` o cunoaște deja, deci codul existent e corect.
+`reserviere_online` citește `max_kinder` din DB, nu are nicio valoare fixă.
+
+⚠️ În DB există rezervări `INTERN_GESPERRT` cu <10 copii (ex. 6 sau 8). După regulile Lenei, lângă
+ele s-ar mai putea rezerva un al doilea grup. **Online**, un `INTERN_GESPERRT` blochează slotul complet.
+(Pentru Lena nu s-a schimbat nimic. Dacă trebuie aliniat, e un task separat.)
 
 **Reguli de capacitate** (identice cu `api/lena/verfuegbarkeit` și `api/lena/reservierungen`):
 - Loje normale: max 2 grupuri pe slot. Un grup cu ≥10 copii blochează loja exclusiv. Al doilea
@@ -142,7 +146,7 @@ alter table online_buchung_versuche enable row level security;  -- keine Policie
 
 **Funcția atomică** `reserviere_online(...)`: `SECURITY DEFINER`, `EXECUTE` revocat de la
 `public, anon, authenticated` și acordat doar lui `service_role`.
-- Parametri: standort_id, loge_id, kunde_id, typ, datum, zeitslot, kinder_anzahl,
+- Parametri (prefix `p_`): standort_id, loge_id, kunde_id, datum, zeitslot, kinder_anzahl,
   erwachsene_anzahl, paket_preis_pro_kind, gesamtbetrag, anzahlung_betrag, notizen,
   idempotenz_schluessel, hold_minuten.
 - Pași:
@@ -156,6 +160,10 @@ alter table online_buchung_versuche enable row level security;  -- keine Policie
      `online_hold_bis = now() + hold_minuten`.
   7. Returnează `{ id }` sau `{ fehler, hinweis }` (jsonb).
 - **Nu** reutiliza rândurile STORNIERT, cum face Lena. Online se face mereu INSERT nou.
+- **Implementat în Faza 2, cu abateri față de schița de mai sus:** `typ` nu mai e parametru, funcția îl
+  derivă din `ist_babywelt`. Un `INTERN_GESPERRT` în slot blochează complet. Un `idempotenz_schluessel`
+  repetat returnează `{ id, wiederholt: true, status }`. Dacă `status = 'STORNIERT'`, clientul are nevoie de cheie nouă.
+  Test: `npx tsx --env-file=.env.local scripts/test-online-doppelbuchung.ts`.
 - Rezervările online expirate nu sunt anulate în funcție (fără Stripe nu știm sigur că nu s-a
   plătit). Sunt doar ignorate la calculul ocupării. Statusul îl schimbă webhook-ul `expired`
   sau pagina `abgebrochen`.
