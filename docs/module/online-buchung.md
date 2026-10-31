@@ -344,6 +344,24 @@ culorile Upsalla, fără Sidebar staff. Wizard în 5 pași, cu bară de progres:
   Valorile de vorlauf se confirmă cu Upsalla.
 - Cron `anfragen-cleanup` (sau unul existent, nu adăuga cron nou): șterge `online_buchung_versuche` mai vechi de 7 zile.
 
+- **Implementat în Faza 6, cu abateri/precizări:**
+  - **Datenschutz fără consimțământ:** prelucrarea pentru rezervare se bazează pe Art. 6 Abs. 1 lit. b DSGVO (contract).
+    Checkbox-ul Datenschutz a fost scos; deasupra butonului de plată: „Mit der Buchung gelten unsere Datenschutzhinweise.” (link
+    `DATENSCHUTZ_URL`). `datenschutz_akzeptiert` nu mai e cerut de server (e ignorat). Clienții noi online: `dsgvo_einwilligung = false`.
+    Rămân: checkbox AGB (obligatoriu) și newsletter (opțional, consimțământ real).
+  - `schutz.ts`: ordinea în `reservieren` = honeypot → validare → cheie de idempotență existentă (fără Turnstile/rate limit,
+    token-urile sunt de unică folosință) → rate limit (5 / 10 min / `ip_hash` = SHA-256(`IP_HASH_SALT`:IP), IP-ul nu se salvează)
+    → Turnstile (`siteverify`). Răspunsuri: 400 `feld=turnstile_token`, 429, 503 dacă lipsesc cheile/salt-ul în afara development.
+  - Turnstile e în **Übersicht** (nu în Kontakt), chiar deasupra butonului, mod `interaction-only`; după fiecare răspuns care nu e
+    redirect, widget-ul se reîncarcă (token nou). Butonul arată „Sicherheitsprüfung…” până vine token-ul.
+  - IP: `x-real-ip` (setat de Vercel), altfel primul `x-forwarded-for`.
+  - `next.config.ts`: `Content-Security-Policy: frame-ancestors 'self' https://upsalla-kinderpark.de https://www.upsalla-kinderpark.de`
+    pe `/buchen/:path*`.
+  - Cron `anfragen-cleanup` șterge și `online_buchung_versuche` mai vechi de 7 zile.
+  - Local (`.env.local`): cheile publice de test Cloudflare (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`).
+  - Test: `npx tsx --env-file=.env.local scripts/test-schutz.ts --http` (Cloudflare live cu chei de test, header CSP, honeypot, 429).
+    `test-online-reservieren.ts` trimite câte un `x-real-ip` diferit per request, ca rate limit-ul să nu încurce testul.
+
 ## 6. Faze
 
 Prompt de start pentru fiecare fază în terminal:
@@ -395,7 +413,9 @@ Prompt de start pentru fiecare fază în terminal:
 - [ ] Stripe Dashboard: webhook + evenimentele `checkout.session.expired`, `checkout.session.async_payment_succeeded`
       și `checkout.session.async_payment_failed`
 - [ ] Vercel: env `STAFF_NOTIFICARE_EMAIL=upsalla.reservierung@gmail.com` (Production)
-- [ ] Cont Cloudflare Turnstile (gratuit) → chei în `.env.local` și Vercel
+- [ ] Cont Cloudflare Turnstile (gratuit), widget pentru hostname-ul de producție (+ Preview) → în Vercel:
+      `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `IP_HASH_SALT` (Production; Preview poate folosi cheile de test)
+- [ ] Vercel Preview: build-urile pică cu `supabaseUrl is required.` (reprodus local fără env), probabil variabilele nu sunt setate pentru Preview → de confirmat cu `vercel env ls` (vezi Faza 7)
 - [ ] Upsalla: confirmă vorlauf-ul minim (2 zile?) și cât de departe în viitor se poate rezerva
 - [ ] Upsalla: textul Datenschutz pentru rezervarea online (Upsalla e operatorul de date, SmartCallService
       e procesator → AVV). Verifică AGB-ul existent (`/agb`)
@@ -413,4 +433,4 @@ Prompt de start pentru fiecare fază în terminal:
 ## Status
 
 - [x] Faza 0  - [x] Faza 1  - [x] Faza 2  - [x] Faza 3
-- [x] Faza 4  - [x] Faza 5  - [ ] Faza 6  - [ ] Faza 7
+- [x] Faza 4  - [x] Faza 5  - [x] Faza 6  - [ ] Faza 7

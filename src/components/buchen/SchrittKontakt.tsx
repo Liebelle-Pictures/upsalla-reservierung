@@ -1,7 +1,7 @@
-// Schritt 4: Kontaktdaten + Einwilligungen. Das Feld "website" ist ein Honeypot (für Menschen
-// unsichtbar). Turnstile folgt in Phase 6.
+// Schritt 4: Kontaktdaten, AGB und optionaler Newsletter. Datenschutz ist keine Einwilligung
+// (Art. 6 Abs. 1 lit. b DSGVO), der Hinweis steht über dem Zahlungsknopf. Das Feld "website"
+// ist ein Honeypot (für Menschen unsichtbar). Turnstile sitzt in der Übersicht.
 import type { InputHTMLAttributes, ReactNode } from 'react'
-import { DATENSCHUTZ_URL } from '@/lib/online-buchung/konfiguration'
 import { GRENZEN } from '@/lib/online-buchung/validierung'
 import type { Kontakt, KontaktFehler } from './wizardLogik'
 import { Karte, SchrittTitel } from './ui'
@@ -90,9 +90,6 @@ export function SchrittKontakt({ kontakt, fehler, onChange }: {
         <div className="mt-5 space-y-1 border-t border-ups-hell pt-4">
           <Haken id="agb_akzeptiert" checked={kontakt.agb_akzeptiert} onChange={v => onChange({ agb_akzeptiert: v })} fehler={fehler.agb_akzeptiert}>
             Ich akzeptiere die <a href="/agb" target="_blank" rel="noopener" className="font-bold text-ups-blau underline">AGB und Stornierungsbedingungen</a>.
-          </Haken>
-          <Haken id="datenschutz_akzeptiert" checked={kontakt.datenschutz_akzeptiert} onChange={v => onChange({ datenschutz_akzeptiert: v })} fehler={fehler.datenschutz_akzeptiert}>
-            Ich habe die <a href={DATENSCHUTZ_URL} target="_blank" rel="noopener" className="font-bold text-ups-blau underline">Datenschutzerklärung</a> gelesen und bin mit der Verarbeitung meiner Daten für die Buchung einverstanden.
           </Haken>
           <Haken id="newsletter_opt_in" checked={kontakt.newsletter_opt_in} onChange={v => onChange({ newsletter_opt_in: v })}>
             Ja, schickt mir gelegentlich Neuigkeiten und Aktionen von Upsalla per E-Mail <span className="text-gray-500">(optional, jederzeit abbestellbar)</span>.

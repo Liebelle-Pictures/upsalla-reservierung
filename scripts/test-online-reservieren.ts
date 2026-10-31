@@ -98,9 +98,13 @@ async function logeIdPerName(name: string): Promise<string> {
 
 interface Antwort { status: number; body: { checkout_url?: string; grund?: string; hinweis?: string; feld?: string } }
 
+// Jeder Request mit eigener (Test-)IP, damit das Rate-Limit (5/10 Min. pro IP) den Test nicht
+// bremst. Das Rate-Limit selbst prüft scripts/test-schutz.ts. Turnstile: lokal Cloudflare-Testschlüssel
+// (akzeptieren jedes Token) oder ohne Schlüssel übersprungen (nur development).
 async function reservieren(daten: Record<string, unknown>): Promise<Antwort> {
+  const testIp = `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`
   const r = await fetch(`${BASIS}/api/buchen/${SLUG}/reservieren`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten),
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-real-ip': testIp }, body: JSON.stringify(daten),
   })
   return { status: r.status, body: await r.json() }
 }
@@ -108,8 +112,8 @@ async function reservieren(daten: Record<string, unknown>): Promise<Antwort> {
 function buchung(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     vorname: 'Test', nachname: 'Online Phase4', telefon: FAKE_TELEFON, email: 'test-phase4@example.com', notizen: 'Testbuchung Phase 4',
-    agb_akzeptiert: true, datenschutz_akzeptiert: true, newsletter_opt_in: true, website: '',
-    turnstile_token: 'dev', idempotenz_schluessel: randomUUID(), erwachsene_anzahl: 4, ...over,
+    agb_akzeptiert: true, newsletter_opt_in: true, website: '',
+    turnstile_token: 'XXXX.DUMMY.TOKEN.XXXX', idempotenz_schluessel: randomUUID(), erwachsene_anzahl: 4, ...over,
   }
 }
 
@@ -135,7 +139,7 @@ async function kundenIdsMitTelefon(telefon: string): Promise<Set<string>> {
 function testeValidierung() {
   console.log('\n1. Validierung (ohne Server)')
   const jetzt = new Date('2026-11-02T12:00:00Z')
-  const gut = { datum: '2026-12-02', zeitslot: 1, loge_id: '6f1c2c1e-1111-4111-8111-111111111111', kinder_anzahl: 8, erwachsene_anzahl: 2, vorname: ' Anna ', nachname: 'Muster', telefon: '0152 123 456 78', email: ' Anna@Example.DE ', agb_akzeptiert: true, datenschutz_akzeptiert: true, newsletter_opt_in: false, idempotenz_schluessel: randomUUID() }
+  const gut = { datum: '2026-12-02', zeitslot: 1, loge_id: '6f1c2c1e-1111-4111-8111-111111111111', kinder_anzahl: 8, erwachsene_anzahl: 2, vorname: ' Anna ', nachname: 'Muster', telefon: '0152 123 456 78', email: ' Anna@Example.DE ', agb_akzeptiert: true, newsletter_opt_in: false, idempotenz_schluessel: randomUUID() }
   const r = validiereBuchungsanfrage(gut, jetzt)
   pruefe(r.ok, 'gültige Anfrage akzeptiert', r)
   if (r.ok) {
@@ -161,7 +165,8 @@ function testeValidierung() {
   fall({ vorname: 'x'.repeat(61) }, 'vorname', 'Vorname > 60 Zeichen abgelehnt')
   fall({ notizen: 'x'.repeat(501) }, 'notizen', 'Notizen > 500 Zeichen abgelehnt')
   fall({ agb_akzeptiert: 'true' }, 'agb_akzeptiert', 'AGB muss exakt true sein')
-  fall({ datenschutz_akzeptiert: false }, 'datenschutz_akzeptiert', 'Datenschutz muss true sein')
+  // Datenschutz ist keine Einwilligung mehr (Art. 6 Abs. 1 lit. b DSGVO) → Feld wird ignoriert
+  pruefe(validiereBuchungsanfrage({ ...gut, datenschutz_akzeptiert: false }, jetzt).ok, 'datenschutz_akzeptiert=false wird ignoriert')
   fall({ idempotenz_schluessel: 'abc' }, 'idempotenz_schluessel', 'ungültiger Idempotenz-Schlüssel abgelehnt')
   pruefe(normalisiereTelefon('+49 152 1234-5678') === '015212345678', '+49-Nummer → 0...')
   pruefe(normalisiereTelefon('+43 660 1234567') === '+436601234567', 'Auslandsnummer bleibt +..')
@@ -218,7 +223,7 @@ async function testeServer() {
   pruefe(res1.zahlungslink_erstellt_am === null, 'zahlungslink_erstellt_am NULL (Lena-Erinnerungs-Cron greift nicht)')
   pruefe(!!res1.stripe_session_id && res1.stripe_payment_link === b1.body.checkout_url, 'stripe_session_id + stripe_payment_link gespeichert')
   const { data: kunde1 } = await supabaseAdmin.from('kunden').select('*').eq('id', res1.kunde_id).single()
-  pruefe(kunde1?.telefon === '00000000093' && kunde1?.email === 'test-phase4@example.com' && kunde1?.newsletter_opt_in === true && kunde1?.dsgvo_einwilligung === true, 'Neukunde: Telefon normalisiert, E-Mail, Newsletter wie angekreuzt, DSGVO', kunde1)
+  pruefe(kunde1?.telefon === '00000000093' && kunde1?.email === 'test-phase4@example.com' && kunde1?.newsletter_opt_in === true && kunde1?.dsgvo_einwilligung === false, 'Neukunde: Telefon normalisiert, E-Mail, Newsletter wie angekreuzt, keine DSGVO-Einwilligung (Vertrag)', kunde1)
   const s1 = await stripe.checkout.sessions.retrieve(res1.stripe_session_id)
   pruefe(s1.metadata?.quelle === 'ONLINE' && s1.metadata?.reservierung_id === res1.id, 'Session-Metadaten quelle=ONLINE + reservierung_id')
   const dauer = s1.expires_at - s1.created

@@ -26,10 +26,10 @@ pruefe('max Kinder nie über 20', maxKinderFuerLoge({ max_kinder: 150 }), 20)
 
 // Kontakt
 const leer = pruefeKontakt(LEERER_KONTAKT)
-pruefe('leeres Formular → alle Pflichtfelder', Object.keys(leer).sort(), ['agb_akzeptiert', 'datenschutz_akzeptiert', 'email', 'nachname', 'telefon', 'vorname'])
+pruefe('leeres Formular → alle Pflichtfelder (ohne Datenschutz-Haken)', Object.keys(leer).sort(), ['agb_akzeptiert', 'email', 'nachname', 'telefon', 'vorname'])
 pruefe('gültiges Formular → keine Fehler', pruefeKontakt({
   ...LEERER_KONTAKT, vorname: 'Anna', nachname: 'Muster', telefon: '0151 2345 6789', email: 'anna@example.de',
-  agb_akzeptiert: true, datenschutz_akzeptiert: true,
+  agb_akzeptiert: true,
 }), {})
 pruefe('ungültige E-Mail', Object.keys(pruefeKontakt({ ...LEERER_KONTAKT, email: 'anna@' })).includes('email'), true)
 
@@ -45,6 +45,8 @@ pruefe('200 → weiterleiten', reaktionAufAntwort(200, { checkout_url: 'https://
 pruefe('200 ohne https-Link → Fehler', reaktionAufAntwort(200, { checkout_url: 'javascript:alert(1)' }).art, 'fehler')
 pruefe('400 telefon → Schritt 4', reaktionAufAntwort(400, { fehler: true, feld: 'telefon', hinweis: 'h' }), { art: 'feld', schritt: 4, feld: 'telefon', hinweis: 'h' })
 pruefe('400 datum → Schritt 1', schrittFuerFeld('datum'), 1)
+pruefe('400 turnstile → neue Sicherheitsprüfung', reaktionAufAntwort(400, { fehler: true, feld: 'turnstile_token', hinweis: 't' }), { art: 'sicherheitspruefung', hinweis: 't' })
+pruefe('429 → Fehler mit Server-Hinweis', reaktionAufAntwort(429, { hinweis: 'Zu viele.' }), { art: 'fehler', hinweis: 'Zu viele.' })
 pruefe('502 → Fehler mit Server-Hinweis', reaktionAufAntwort(502, { hinweis: 'Später.' }), { art: 'fehler', hinweis: 'Später.' })
 
 // Kalender

@@ -67,14 +67,13 @@ export interface Kontakt {
   email: string
   notizen: string
   agb_akzeptiert: boolean
-  datenschutz_akzeptiert: boolean
   newsletter_opt_in: boolean
   website: string // Honeypot, bleibt leer
 }
 
 export const LEERER_KONTAKT: Kontakt = {
   vorname: '', nachname: '', telefon: '', email: '', notizen: '',
-  agb_akzeptiert: false, datenschutz_akzeptiert: false, newsletter_opt_in: false, website: '',
+  agb_akzeptiert: false, newsletter_opt_in: false, website: '',
 }
 
 // In welchem Schritt steht ein Feld, das der Server als fehlerhaft meldet?
@@ -91,7 +90,6 @@ export function schrittFuerFeld(feld: string | undefined): Schritt {
     case 'email':
     case 'notizen':
     case 'agb_akzeptiert':
-    case 'datenschutz_akzeptiert':
     case 'newsletter_opt_in': return 4
     default: return 5
   }
@@ -143,7 +141,6 @@ export function pruefeKontakt(k: Kontakt): KontaktFehler {
   if (!email || email.length > GRENZEN.emailMax || !EMAIL_RE.test(email)) f.email = 'Bitte gebt eine gültige E-Mail-Adresse an.'
   if (k.notizen.trim().length > GRENZEN.notizenMax) f.notizen = `Bitte höchstens ${GRENZEN.notizenMax} Zeichen.`
   if (!k.agb_akzeptiert) f.agb_akzeptiert = 'Bitte akzeptiert die AGB.'
-  if (!k.datenschutz_akzeptiert) f.datenschutz_akzeptiert = 'Bitte bestätigt die Datenschutzerklärung.'
   return f
 }
 
@@ -159,6 +156,8 @@ export type Reaktion =
   | { art: 'wiederholen'; hinweis: string }
   | { art: 'bereits_bezahlt'; hinweis: string }
   | { art: 'feld'; schritt: Schritt; feld?: string; hinweis: string }
+  // Turnstile-Token abgelehnt/abgelaufen → Widget neu laden, nochmal absenden
+  | { art: 'sicherheitspruefung'; hinweis: string }
   | { art: 'fehler'; hinweis: string }
 
 const ALLGEMEINER_FEHLER = 'Da ist etwas schiefgelaufen. Bitte versucht es gleich noch einmal oder ruft uns an: 0202 2623339.'
@@ -194,6 +193,7 @@ export function reaktionAufAntwort(status: number, body: unknown): Reaktion {
   }
   if (status === 400) {
     const feld = typeof b.feld === 'string' ? b.feld : undefined
+    if (feld === 'turnstile_token') return { art: 'sicherheitspruefung', hinweis: hinweis ?? ALLGEMEINER_FEHLER }
     return { art: 'feld', schritt: schrittFuerFeld(feld), feld, hinweis: hinweis ?? ALLGEMEINER_FEHLER }
   }
   if (status === 404) return { art: 'fehler', hinweis: 'Die Online-Buchung ist gerade nicht verfügbar. Ruft uns gerne an: 0202 2623339.' }

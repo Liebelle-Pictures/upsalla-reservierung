@@ -141,7 +141,8 @@ export function validiereBuchungsanfrage(body: unknown, jetzt: Date = new Date()
   if (notizen === null || notizen.length > GRENZEN.notizenMax) return { ok: false, feld: 'notizen', hinweis: `Notizen bitte höchstens ${GRENZEN.notizenMax} Zeichen.` }
 
   if (b.agb_akzeptiert !== true) return { ok: false, feld: 'agb_akzeptiert', hinweis: 'Bitte akzeptiert die AGB.' }
-  if (b.datenschutz_akzeptiert !== true) return { ok: false, feld: 'datenschutz_akzeptiert', hinweis: 'Bitte bestätigt die Datenschutzerklärung.' }
+  // Datenschutz: keine Einwilligung (Art. 6 Abs. 1 lit. b DSGVO), nur Hinweis im Widget →
+  // datenschutz_akzeptiert wird nicht mehr verlangt und ignoriert.
   if (b.newsletter_opt_in !== undefined && typeof b.newsletter_opt_in !== 'boolean') return { ok: false, feld: 'newsletter_opt_in', hinweis: 'Ungültige Anfrage.' }
 
   const schluessel = text(b.idempotenz_schluessel)

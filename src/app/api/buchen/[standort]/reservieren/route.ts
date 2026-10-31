@@ -7,13 +7,16 @@
 //   SLOT_BELEGT / KAPAZITAET / LOGE_UNGUELTIG → zurück zu Schritt 2, Verfügbarkeit neu laden
 //   IN_BEARBEITUNG → kurz warten und denselben Request wiederholen
 //   BEREITS_BEZAHLT → nichts mehr tun, Bestätigung kommt per SMS/E-Mail
-// Turnstile + Rate-Limit folgen in Phase 6 (siehe Markierung unten).
+// Antwort 400 mit feld 'turnstile_token' → Widget zurücksetzen, neu absenden
+// Antwort 429 → Rate-Limit (5 Versuche / 10 Min. pro IP-Hash)
+// Antwort 503 → Schutz-Konfiguration fehlt (Turnstile/IP-Salt), Buchung nicht möglich
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ladeOnlineStandort } from '@/lib/online-buchung/standort'
 import { validiereBuchungsanfrage, slotExistiert, telefonSchluessel, type Buchungsanfrage } from '@/lib/online-buchung/validierung'
 import { HOLD_MINUTEN, STRIPE_GUELTIGKEIT_SEKUNDEN } from '@/lib/online-buchung/konfiguration'
 import { storniereUnbezahlteOnlineBuchung } from '@/lib/online-buchung/bestaetigung'
+import { pruefeSchutz } from '@/lib/online-buchung/schutz'
 import { berechneVerfuegbarkeit } from '@/lib/verfuegbarkeit'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum } from '@/lib/utils/zeitslots'
@@ -121,16 +124,20 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/buchen/
   const website = (body as { website?: unknown } | null)?.website
   if (website !== undefined && website !== null && website !== '') return fehler(400, 'Ungültige Anfrage.')
 
-  // ── Phase 6: Turnstile-Prüfung + Rate-Limit (schutz.ts) hier einfügen ──
-
   const validierung = validiereBuchungsanfrage(body)
   if (!validierung.ok) return fehler(400, validierung.hinweis, validierung.feld)
   const a = validierung.daten
 
   try {
     // 1. Doppeltes Absenden zuerst behandeln (sonst wäre der eigene Slot "belegt")
+    // Kein Turnstile/Rate-Limit nötig: der Schlüssel stammt aus einem bereits geprüften Request
+    // (Turnstile-Tokens sind nur einmal gültig, Wiederholungen hätten sonst keine Chance).
     const bestehend = await ladeBuchungPerSchluessel(a.idempotenz_schluessel)
     if (bestehend) return await antwortFuerBestehendeBuchung(bestehend, a)
+
+    // 1b. Neuer Buchungsversuch: Rate-Limit + Turnstile
+    const schutz = await pruefeSchutz(request.headers, (body as { turnstile_token?: unknown }).turnstile_token)
+    if (!schutz.ok) return fehler(schutz.status, schutz.hinweis, schutz.feld)
 
     // 2. Loge + Slot-Regeln (verfuegbarkeit_regel prüft reserviere_online NICHT, daher hier)
     const { data: loge } = await supabaseAdmin
@@ -180,7 +187,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/buchen/
           nachname: a.nachname,
           telefon: a.telefon,
           email: a.email,
-          dsgvo_einwilligung: true,
+          // Online keine Einwilligung: Verarbeitung zur Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)
+          dsgvo_einwilligung: false,
           newsletter_opt_in: a.newsletter_opt_in,
         })
         .select('id')

@@ -13,6 +13,8 @@ import { SchrittPersonen } from './SchrittPersonen'
 import { SchrittKontakt } from './SchrittKontakt'
 import { SchrittUebersicht } from './SchrittUebersicht'
 import { Aktionsleiste, Hinweis, Knopf } from './ui'
+import { Turnstile, TURNSTILE_SITE_KEY } from './Turnstile'
+import { DATENSCHUTZ_URL } from '@/lib/online-buchung/konfiguration'
 import {
   begrenze, euro, LEERER_KONTAKT, maxKinderFuerLoge, preisVorschau, pruefeKontakt, reaktionAufAntwort,
   type Kontakt, type KontaktFehler, type MonatAntwort, type Schritt, type TagAntwort,
@@ -69,6 +71,11 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
   const [hinweis, setHinweis] = useState<SchrittHinweis | null>(null)
   const [sendet, setSendet] = useState(false)
   const [abgeschlossen, setAbgeschlossen] = useState(false)
+  // Turnstile: Token ist einmalig gültig → nach jedem Absenden neues Widget (runde + 1)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [turnstileRunde, setTurnstileRunde] = useState(0)
+  const neueSicherheitspruefung = () => { setTurnstileToken(null); setTurnstileRunde(r => r + 1) }
+  const wartetAufPruefung = !!TURNSTILE_SITE_KEY && !turnstileToken
 
   const inhaltRef = useRef<HTMLDivElement>(null)
   const tagAnfrage = useRef<AbortController | null>(null)
@@ -230,9 +237,8 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
           email: kontakt.email.trim(),
           notizen: kontakt.notizen.trim() || null,
           agb_akzeptiert: kontakt.agb_akzeptiert,
-          datenschutz_akzeptiert: kontakt.datenschutz_akzeptiert,
           newsletter_opt_in: kontakt.newsletter_opt_in,
-          turnstile_token: null, // Phase 6
+          turnstile_token: turnstileToken,
           idempotenz_schluessel: schluessel,
           website: kontakt.website,
         }),
@@ -241,6 +247,7 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
       body = await res.json().catch(() => null)
     } catch {
       setHinweis({ schritt: 5, ton: 'fehler', text: 'Keine Verbindung. Bitte prüft euer Internet und tippt noch einmal auf „Zahlungspflichtig buchen“.' })
+      neueSicherheitspruefung()
       setSendet(false)
       return
     }
@@ -279,10 +286,15 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
         setHinweis({ schritt: r.schritt, ton: 'fehler', text: r.hinweis })
         zurueck(r.schritt)
         break
+      case 'sicherheitspruefung':
+        setHinweis({ schritt: 5, ton: 'warnung', text: r.hinweis })
+        break
       case 'fehler':
         setHinweis({ schritt: 5, ton: 'fehler', text: r.hinweis })
         break
     }
+    // Das Token wurde vom Server verbraucht (oder abgelehnt) → für den nächsten Versuch neu holen
+    neueSicherheitspruefung()
     setSendet(false)
   }
 
@@ -355,10 +367,21 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
             onAendern={zurueck}
           />
         )}
+        {aktuell === 5 && !abgeschlossen && (
+          <Turnstile
+            key={turnstileRunde}
+            onToken={setTurnstileToken}
+            onFehler={text => setHinweis({ schritt: 5, ton: 'fehler', text })}
+          />
+        )}
       </div>
 
       {aktuell > 1 && (
-        <Aktionsleiste>
+        <Aktionsleiste oben={aktuell === 5 ? (
+          <>Mit der Buchung gelten unsere{' '}
+            <a href={DATENSCHUTZ_URL} target="_blank" rel="noopener" className="font-bold text-ups-blau underline underline-offset-2">Datenschutzhinweise</a>.
+          </>
+        ) : undefined}>
           <Knopf art="text" className="px-2" onClick={() => zurueck((aktuell - 1) as Schritt)} disabled={sendet}>
             ‹ Zurück
           </Knopf>
@@ -368,9 +391,11 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
           {aktuell === 3 && <Knopf className="flex-1 sm:flex-none" onClick={() => vor(4)}>Weiter</Knopf>}
           {aktuell === 4 && <Knopf className="flex-1 sm:flex-none" onClick={weiterVonKontakt}>Weiter zur Übersicht</Knopf>}
           {aktuell === 5 && (
-            <Knopf className="flex-1 text-[15px] leading-tight sm:flex-none sm:text-base" disabled={sendet || abgeschlossen} onClick={() => void absenden()}>
+            <Knopf className="flex-1 text-[15px] leading-tight sm:flex-none sm:text-base" disabled={sendet || abgeschlossen || wartetAufPruefung} onClick={() => void absenden()}>
               {sendet ? (
                 <><span className="h-5 w-5 animate-spin rounded-full border-[3px] border-white/40 border-t-white" aria-hidden />Einen Moment…</>
+              ) : wartetAufPruefung && !abgeschlossen ? (
+                <><span className="h-5 w-5 animate-spin rounded-full border-[3px] border-white/40 border-t-white" aria-hidden />Sicherheitsprüfung…</>
               ) : (
                 <>Zahlungspflichtig buchen – Anzahlung {euro(anzahlung)}</>
               )}

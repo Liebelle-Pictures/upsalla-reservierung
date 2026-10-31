@@ -95,9 +95,10 @@ export function Stepper({ label, beschreibung, wert, min, max, onChange }: {
 }
 
 // Untere Aktionsleiste: auf dem Handy am Bildschirmrand klebend, damit „Weiter“ immer erreichbar ist
-export function Aktionsleiste({ children }: { children: ReactNode }) {
+export function Aktionsleiste({ children, oben }: { children: ReactNode; oben?: ReactNode }) {
   return (
     <div data-aktionsleiste className="sticky bottom-0 z-10 -mx-3 mt-6 border-t border-ups-hell bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+      {oben && <div className="mb-2 text-center text-[13px] text-gray-600 sm:text-right">{oben}</div>}
       <div className="flex items-center justify-between gap-3">{children}</div>
     </div>
   )
