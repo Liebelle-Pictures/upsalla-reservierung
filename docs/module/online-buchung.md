@@ -333,5 +333,5 @@ Prompt de start pentru fiecare fază în terminal:
 
 ## Status
 
-- [x] Faza 0  - [ ] Faza 1  - [ ] Faza 2  - [ ] Faza 3
+- [x] Faza 0  - [x] Faza 1  - [ ] Faza 2  - [ ] Faza 3
 - [ ] Faza 4  - [ ] Faza 5  - [ ] Faza 6  - [ ] Faza 7
