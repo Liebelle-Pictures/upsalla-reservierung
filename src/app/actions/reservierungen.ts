@@ -199,9 +199,11 @@ export async function reservierungErstellen(
   let resError = null
 
   if (storniertVorhanden) {
+    // erstellt_von explizit überschreiben: sonst bleibt beim Wiederverwenden einer stornierten
+    // Lena-Buchung null stehen und die Personal-Buchung zählt in der Lena-Statistik mit.
     const { data, error } = await supabaseAdmin
       .from('reservierungen')
-      .update(reservierungsDaten)
+      .update({ ...reservierungsDaten, erstellt_von: user.id })
       .eq('id', storniertVorhanden.id)
       .select('id')
       .single()

@@ -207,6 +207,9 @@ export async function getLenaStatistik(
     .select('status, gesamtbetrag')
     .eq('standort_id', standortId)
     .is('erstellt_von', null)   // Lena setzt keinen Supabase-User
+    // Beide Bedingungen nötig: Online-Buchungen haben ebenfalls erstellt_von = null, und
+    // Altbuchungen vor Migration 004 tragen per DEFAULT angenommen_von = 'KI LENA'.
+    .eq('angenommen_von', 'KI LENA')
     .gte('erstellt_am', von)
 
   const alle = (data ?? []) as { status: string; gesamtbetrag: number }[]

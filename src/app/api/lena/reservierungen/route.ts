@@ -127,7 +127,9 @@ export async function POST(request: NextRequest) {
     .select('id')
     .eq('loge_id', loge_id)
     .eq('datum', datumKorrigiert)
+    // Nur eigene Lena-Buchungen — eine fremde Online-Buchung ist kein Duplikat dieses Anrufs
     .is('erstellt_von', null)
+    .eq('angenommen_von', 'KI LENA')
     .neq('status', 'STORNIERT')
     .gte('erstellt_am', fuenfzehnMinutenVorher)
     .order('erstellt_am', { ascending: false })
