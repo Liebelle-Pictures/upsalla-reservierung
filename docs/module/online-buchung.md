@@ -183,6 +183,18 @@ funcție (task separat).
   pentru toată luna. Returnează pentru fiecare zi: `geschlossen | ausgebucht | wenige | frei`
   (`wenige` = ≤2 combinații lojă/slot libere) și dacă e zi cu tarif de weekend.
 
+- **Implementat în Faza 3, cu abateri:** în loc de `nurOnlineBuchbar` + `ignoriereAbgelaufeneHolds`
+  există un singur parametru `modus: 'LENA' | 'ONLINE'`, ca regulile online să nu poată fi amestecate.
+  `ONLINE` = exact regulile din `reserviere_online`: doar `online_buchbar`, `INTERN_GESPERRT` blochează complet,
+  holds online expirate ignorate, flexibel limitat la `max_kinder`, al doilea grup max 9 copii.
+  Online poate fi mai strict decât funcția (ex. `verfuegbarkeit_regel`, pe care funcția SQL nu o verifică →
+  Faza 4 trebuie să valideze slotul cu `logeIstVerfuegbarFuerSlot` în `reservieren`), dar niciodată mai larg.
+  Ruta Lena verificată identic byte cu byte pe 11 date × GET/POST + 401.
+  Logica pură: `berechneFreieSlots(...)` (testabilă fără DB). Zile cu tarif weekend pe lună:
+  `ladePreisteuerteTage(von, bis)` în `feiertage.ts` (un singur query pentru vacanțe).
+  Test: `npx tsx --env-file=.env.local scripts/test-verfuegbarkeit.ts` (include comparația live cu `reserviere_online`).
+  Dev local: `ONLINE_BUCHUNG_SCHALTER_IGNORIEREN=true npm run dev` ignoră `online_buchung_aktiv` (doar în development).
+
 ### 5.3 API public
 
 Toate rutele: `export const dynamic = 'force-dynamic'`, rezolvă `[standort]` prin `standorte.slug`,
@@ -341,5 +353,5 @@ Prompt de start pentru fiecare fază în terminal:
 
 ## Status
 
-- [x] Faza 0  - [x] Faza 1  - [x] Faza 2  - [ ] Faza 3
+- [x] Faza 0  - [x] Faza 1  - [x] Faza 2  - [x] Faza 3
 - [ ] Faza 4  - [ ] Faza 5  - [ ] Faza 6  - [ ] Faza 7
