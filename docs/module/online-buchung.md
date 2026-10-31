@@ -390,7 +390,8 @@ Prompt de start pentru fiecare fază în terminal:
 ## 7. De făcut de Valeriu (în afara codului)
 
 - [x] Rulează migrația 011 în Supabase (31.10.2026)
-- [ ] Rulează migrația 012 (`logen.bild_url`) în Supabase; apoi, opțional, poze per lojă (URL https, ex. bucket public Storage)
+- [x] Rulează migrația 012 (`logen.bild_url`) în Supabase (31.10.2026, verificat: coloana există, `http://` respins de CHECK)
+- [ ] Opțional: poze per lojă în `logen.bild_url` (URL https, ex. bucket public Supabase Storage)
 - [ ] Stripe Dashboard: webhook + evenimentele `checkout.session.expired`, `checkout.session.async_payment_succeeded`
       și `checkout.session.async_payment_failed`
 - [ ] Vercel: env `STAFF_NOTIFICARE_EMAIL=upsalla.reservierung@gmail.com` (Production)
