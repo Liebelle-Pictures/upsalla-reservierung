@@ -1,9 +1,9 @@
-// Schritt 4: Kontaktdaten, AGB und optionaler Newsletter. Datenschutz ist keine Einwilligung
+// Schritt 4: Kontaktdaten und AGB (kein Newsletter-Haken, nur Hinweis auf das jährliche Angebot). Datenschutz ist keine Einwilligung
 // (Art. 6 Abs. 1 lit. b DSGVO), der Hinweis steht über dem Zahlungsknopf. Das Feld "website"
 // ist ein Honeypot (für Menschen unsichtbar). Turnstile sitzt in der Übersicht.
 import type { InputHTMLAttributes, ReactNode } from 'react'
 import { GRENZEN } from '@/lib/online-buchung/validierung'
-import type { Kontakt, KontaktFehler } from './wizardLogik'
+import { TEXT_ANGEBOT_HINWEIS, type Kontakt, type KontaktFehler } from './wizardLogik'
 import { Karte, SchrittTitel } from './ui'
 
 function Feld({ id, label, fehler, hilfe, ...rest }: InputHTMLAttributes<HTMLInputElement> & { id: keyof Kontakt; label: string; fehler?: string; hilfe?: string }) {
@@ -91,9 +91,8 @@ export function SchrittKontakt({ kontakt, fehler, onChange }: {
           <Haken id="agb_akzeptiert" checked={kontakt.agb_akzeptiert} onChange={v => onChange({ agb_akzeptiert: v })} fehler={fehler.agb_akzeptiert}>
             Ich akzeptiere die <a href="/agb" target="_blank" rel="noopener" className="font-bold text-ups-blau underline">AGB und Stornierungsbedingungen</a>.
           </Haken>
-          <Haken id="newsletter_opt_in" checked={kontakt.newsletter_opt_in} onChange={v => onChange({ newsletter_opt_in: v })}>
-            Ja, schickt mir gelegentlich Neuigkeiten und Aktionen von Upsalla per E-Mail <span className="text-gray-500">(optional, jederzeit abbestellbar)</span>.
-          </Haken>
+          {/* Hinweis statt Newsletter-Haken (Bestandskunden-Angebot, Widerspruch jederzeit möglich) */}
+          <p className="pt-2 text-[14px] leading-snug text-gray-600">{TEXT_ANGEBOT_HINWEIS}</p>
         </div>
       </Karte>
     </>

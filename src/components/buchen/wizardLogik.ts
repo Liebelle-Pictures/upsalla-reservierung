@@ -38,6 +38,9 @@ export const TEXT_GETEILT_ERKLAERUNG = 'Geteilte Loge: Ihr habt euren eigenen Ti
 export const TEXT_GETEILT = 'Geteilte Loge – ihr habt euren eigenen Tisch, am zweiten Tisch feiert eine andere Gruppe.'
 export const TEXT_GANZ = 'Ganze Loge für euch'
 
+// Statt Newsletter-Haken im Kontaktformular
+export const TEXT_ANGEBOT_HINWEIS = 'Etwa einmal im Jahr schicken wir euch ein Angebot für den nächsten Kindergeburtstag. Ihr könnt dem jederzeit widersprechen.'
+
 export interface SlotOption {
   zeitslot: number
   start: string
@@ -67,13 +70,12 @@ export interface Kontakt {
   email: string
   notizen: string
   agb_akzeptiert: boolean
-  newsletter_opt_in: boolean
   website: string // Honeypot, bleibt leer
 }
 
 export const LEERER_KONTAKT: Kontakt = {
   vorname: '', nachname: '', telefon: '', email: '', notizen: '',
-  agb_akzeptiert: false, newsletter_opt_in: false, website: '',
+  agb_akzeptiert: false, website: '',
 }
 
 // In welchem Schritt steht ein Feld, das der Server als fehlerhaft meldet?
@@ -89,8 +91,7 @@ export function schrittFuerFeld(feld: string | undefined): Schritt {
     case 'telefon':
     case 'email':
     case 'notizen':
-    case 'agb_akzeptiert':
-    case 'newsletter_opt_in': return 4
+    case 'agb_akzeptiert': return 4
     default: return 5
   }
 }

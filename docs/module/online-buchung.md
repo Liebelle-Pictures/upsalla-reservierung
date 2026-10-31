@@ -361,6 +361,13 @@ culorile Upsalla, fără Sidebar staff. Wizard în 5 pași, cu bară de progres:
   - Local (`.env.local`): cheile publice de test Cloudflare (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`).
   - Test: `npx tsx --env-file=.env.local scripts/test-schutz.ts --http` (Cloudflare live cu chei de test, header CSP, honeypot, 429).
     `test-online-reservieren.ts` trimite câte un `x-real-ip` diferit per request, ca rate limit-ul să nu încurce testul.
+- **Ajustări înainte de go-live (31.10.2026):**
+  - Newsletter: checkbox-ul a fost scos. În locul lui textul „Etwa einmal im Jahr schicken wir euch ein Angebot für den nächsten
+    Kindergeburtstag. Ihr könnt dem jederzeit widersprechen.” Serverul ignoră `newsletter_opt_in`; clienții noi online au mereu `false`.
+  - Fișa clientului (dashboard): `dsgvo_einwilligung = false` + prima rezervare `angenommen_von = 'ONLINE'` → „Online-Buchung (Vertrag)”
+    (`src/lib/utils/kundeAnzeige.ts`). Exportul Google Sheets e neschimbat.
+  - `vercel.json`: `"ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]"` → exit 0 (sare build-ul) pentru orice branch
+    în afară de `main`, exit 1 (construiește) pe `main`. Cron-urile neschimbate.
 
 ## 6. Faze
 
@@ -380,9 +387,73 @@ Prompt de start pentru fiecare fază în terminal:
   Test cu `stripe listen --forward-to localhost:3000/api/webhooks/stripe`.
 - **Faza 5: UI wizard.** Componentele din `src/components/buchen/`. Testează pe viewport 375px.
 - **Faza 6: protecție + legal.** Turnstile, rate limit, honeypot, header iframe, link Datenschutz.
-- **Faza 7: test end-to-end și go-live.** Stripe test mode pe Vercel Preview: rezervare completă,
-  anulare, expirare (sesiune de 30 min), doi utilizatori pe aceeași lojă, iframe pe o pagină de test.
-  Apoi `online_buchung_aktiv=true` în producție.
+- **Faza 7: go-live direct în producție** (fără Vercel Preview, decizie 31.10.2026). Pașii exacți: secțiunea 6b.
+
+## 6b. Faza 7: go-live în producție (pașii lui Valeriu)
+
+Principiu: codul ajunge în producție **cu widget-ul oprit** (`standorte.online_buchung_aktiv = false` → toate rutele
+`/buchen/...` și `/api/buchen/...` răspund 404). Pornirea e un singur UPDATE în DB, oprirea la fel, fără deploy.
+Baza de date e una singură (migrațiile 011 și 012 sunt deja rulate și sunt compatibile cu codul vechi).
+
+**Verificat local înainte de merge (31.10.2026):** `next build` + `next start` **fără** `NEXT_PUBLIC_TURNSTILE_SITE_KEY`,
+`TURNSTILE_SECRET_KEY`, `IP_HASH_SALT`, `STAFF_NOTIFICARE_EMAIL` (dar cu variabilele vechi): build OK, dashboard 200/307,
+Lena `verfuegbarkeit` 200 (401 fără cheie), `/zahlung/abgebrochen` și `/agb` 200, widget + API online 404.
+Dacă cineva pornește comutatorul fără chei, `reservieren` răspunde 503 (nu se poate rezerva neprotejat).
+
+**Pasul 1: merge în `main` și deploy (widget-ul rămâne oprit)**
+1. Local: `git checkout main && git pull`, apoi `git merge --no-ff feature/online-buchung`.
+2. `npm run build` local trebuie să treacă. Apoi `git push origin main`.
+3. Vercel construiește doar `main` (vezi `ignoreCommand` în `vercel.json`). Aștepți deployment-ul „Ready”.
+4. Notezi în Vercel → Deployments care era deployment-ul de producție **dinainte** (pentru pasul 5).
+5. Verificare în browser: `https://<domeniu-productie>/buchen/upsalla` → **404**, `/api/buchen/upsalla/monat?monat=2026-11` → **404**.
+
+**Pasul 2: Lena funcționează normal în producție**
+1. Un apel de test la Lena: întrebi de disponibilitate pentru o zi, eventual faci o rezervare de test pe o dată îndepărtată.
+2. Dashboard → calendar: rezervarea de test apare corect. O anulezi apoi ca de obicei.
+3. Dashboard → Lena-Statistik: apelul de test e numărat, cifrele arată ca înainte.
+4. Vercel → Logs: fără erori noi la `/api/lena/...` și `/api/webhooks/retell`.
+
+**Pasul 3: variabile în Vercel Production + Stripe, apoi redeploy**
+1. Cloudflare → Turnstile → widget nou, hostname = domeniul de producție al aplicației (cel din care se servește
+   `/buchen/upsalla`; nu e nevoie de upsalla-kinderpark.de). Mod „Managed”.
+2. Vercel → Settings → Environment Variables, **doar Production**:
+   - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` = Site Key din Cloudflare
+   - `TURNSTILE_SECRET_KEY` = Secret Key din Cloudflare
+   - `IP_HASH_SALT` = valoare nouă din `openssl rand -hex 32` (alta decât cea locală)
+   - `STAFF_NOTIFICARE_EMAIL` = `upsalla.reservierung@gmail.com`
+3. Stripe Dashboard (**live mode**) → Developers → Webhooks → endpoint-ul existent `/api/webhooks/stripe` → adaugi evenimentele
+   `checkout.session.expired`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`
+   (`checkout.session.completed` rămâne). Secretul endpoint-ului nu se schimbă.
+4. Vercel → Deployments → ultimul deployment de producție → **Redeploy** (necesar: `NEXT_PUBLIC_*` se citește la build).
+5. Verificare: `/buchen/upsalla` tot **404** (comutatorul e încă oprit).
+
+**Pasul 4: pornire + rezervare reală cu suma minimă, apoi storno + rambursare**
+1. Supabase → SQL Editor: `update standorte set online_buchung_aktiv = true where slug = 'upsalla';`
+2. Deschizi `/buchen/upsalla` pe telefon. Suma minimă: o zi **de lucru la cel puțin 7 zile distanță** (vezi pct. 5), 1 copil,
+   0 adulți → se facturează 6 copii × 23 € = 138 €, **Anzahlung 27,60 €**. Contact: telefonul și emailul tău. Card real (Stripe live).
+3. Verifici:
+   - pagina „Euer Termin ist fix!” după plată;
+   - SMS de confirmare și email cu atașament ICS la tine;
+   - emailul „Neue Online-Buchung” la `upsalla.reservierung@gmail.com`;
+   - calendarul Freizo: rezervarea e GRÜN, la loja/ora aleasă, `angenommen_von = ONLINE`;
+   - Lena-Statistik **nu** numără rezervarea online; fișa clientului arată „Online-Buchung (Vertrag)”.
+4. (Recomandat) Al doilea test fără plată: începi o rezervare, pe pagina Stripe apeși „Zurück” → pagina „Zahlung abgebrochen”,
+   iar slotul e imediat din nou liber în widget.
+5. Storno: în Freizo anulezi rezervarea ca de obicei. Dacă termenul e la **≥ 7 zile**, Freizo face **automat** rambursarea
+   integrală prin Stripe și trimite SMS-ul de storno („…wird innerhalb von 5-10 Werktagen erstattet”). Verifici în Stripe Dashboard
+   → Payments că plata de 27,60 € apare „Refunded”. **Nu** face încă o rambursare manuală. Doar dacă termenul e < 7 zile (fără
+   rambursare automată) sau rambursarea automată a eșuat (Vercel Logs: `[Stripe] Rückerstattung fehlgeschlagen`): Payments → plata →
+   **Refund**. Taxa Stripe pentru tranzacție nu se returnează.
+6. Decizie: comutatorul rămâne pornit (go-live) sau îl oprești (`... set online_buchung_aktiv = false ...`) până e gata butonul
+   de pe upsalla-kinderpark.de.
+
+**Pasul 5: rollback**
+1. **Cel mai rapid (secunde, fără deploy):** `update standorte set online_buchung_aktiv = false where slug = 'upsalla';` →
+   widget-ul și API-ul online dau imediat 404; Lena/staff nu sunt afectate.
+2. **Dacă e afectat altceva (Lena, dashboard, webhook-uri):** Vercel → Deployments → deployment-ul de producție notat la pasul 1.4
+   → ⋯ → **Promote to Production** (instant, fără build). Atenție: după un rollback, Vercel nu mai mută automat noile deploy-uri
+   din `main` în producție până nu anulezi rollback-ul (Undo Rollback / Promote pe deployment-ul nou).
+3. DB: nu e nevoie de rollback. Migrațiile 011/012 doar adaugă coloane/tabele și funcționează și cu codul vechi.
 
 ## 6a. Note din Faza 0 (Next 16.2.9, verificat în `node_modules/next/dist/docs/`)
 
@@ -410,12 +481,13 @@ Prompt de start pentru fiecare fază în terminal:
 - [x] Rulează migrația 011 în Supabase (31.10.2026)
 - [x] Rulează migrația 012 (`logen.bild_url`) în Supabase (31.10.2026, verificat: coloana există, `http://` respins de CHECK)
 - [ ] Opțional: poze per lojă în `logen.bild_url` (URL https, ex. bucket public Supabase Storage)
-- [ ] Stripe Dashboard: webhook + evenimentele `checkout.session.expired`, `checkout.session.async_payment_succeeded`
+- [ ] (Faza 7, pasul 3) Stripe Dashboard: webhook + evenimentele `checkout.session.expired`, `checkout.session.async_payment_succeeded`
       și `checkout.session.async_payment_failed`
-- [ ] Vercel: env `STAFF_NOTIFICARE_EMAIL=upsalla.reservierung@gmail.com` (Production)
+- [ ] (Faza 7, pasul 3) Vercel: env `STAFF_NOTIFICARE_EMAIL=upsalla.reservierung@gmail.com` (Production)
 - [ ] Cont Cloudflare Turnstile (gratuit), widget pentru hostname-ul de producție (+ Preview) → în Vercel:
       `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `IP_HASH_SALT` (Production; Preview poate folosi cheile de test)
-- [ ] Vercel Preview: build-urile pică cu `supabaseUrl is required.` (reprodus local fără env), probabil variabilele nu sunt setate pentru Preview → de confirmat cu `vercel env ls` (vezi Faza 7)
+- [x] Vercel Preview: renunțăm (31.10.2026). Cauza căderilor (reprodusă local): build fără variabile de mediu →
+      `supabaseUrl is required.`. Din `vercel.json` (`ignoreCommand`) Vercel construiește doar `main`.
 - [ ] Upsalla: confirmă vorlauf-ul minim (2 zile?) și cât de departe în viitor se poate rezerva
 - [ ] Upsalla: textul Datenschutz pentru rezervarea online (Upsalla e operatorul de date, SmartCallService
       e procesator → AVV). Verifică AGB-ul existent (`/agb`)

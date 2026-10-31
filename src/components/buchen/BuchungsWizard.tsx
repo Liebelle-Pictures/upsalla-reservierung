@@ -237,7 +237,6 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
           email: kontakt.email.trim(),
           notizen: kontakt.notizen.trim() || null,
           agb_akzeptiert: kontakt.agb_akzeptiert,
-          newsletter_opt_in: kontakt.newsletter_opt_in,
           turnstile_token: turnstileToken,
           idempotenz_schluessel: schluessel,
           website: kontakt.website,

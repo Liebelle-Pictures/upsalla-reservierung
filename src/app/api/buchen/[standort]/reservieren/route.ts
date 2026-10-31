@@ -189,7 +189,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/buchen/
           email: a.email,
           // Online keine Einwilligung: Verarbeitung zur Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)
           dsgvo_einwilligung: false,
-          newsletter_opt_in: a.newsletter_opt_in,
+          // Kein Newsletter-Haken im Widget (nur Hinweis auf das jährliche Angebot) → immer false
+          newsletter_opt_in: false,
         })
         .select('id')
         .single()

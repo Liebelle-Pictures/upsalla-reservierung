@@ -54,7 +54,6 @@ export interface Buchungsanfrage {
   telefon: string         // normalisiert: lokales Format ohne Leerzeichen (0...) bzw. +.. bei Ausland
   email: string           // getrimmt, kleingeschrieben
   notizen: string | null
-  newsletter_opt_in: boolean
   idempotenz_schluessel: string
 }
 
@@ -143,7 +142,7 @@ export function validiereBuchungsanfrage(body: unknown, jetzt: Date = new Date()
   if (b.agb_akzeptiert !== true) return { ok: false, feld: 'agb_akzeptiert', hinweis: 'Bitte akzeptiert die AGB.' }
   // Datenschutz: keine Einwilligung (Art. 6 Abs. 1 lit. b DSGVO), nur Hinweis im Widget →
   // datenschutz_akzeptiert wird nicht mehr verlangt und ignoriert.
-  if (b.newsletter_opt_in !== undefined && typeof b.newsletter_opt_in !== 'boolean') return { ok: false, feld: 'newsletter_opt_in', hinweis: 'Ungültige Anfrage.' }
+  // newsletter_opt_in: kein Haken mehr im Widget → wird ignoriert (Neukunden online immer false)
 
   const schluessel = text(b.idempotenz_schluessel)
   if (!schluessel || !UUID_RE.test(schluessel)) return { ok: false, feld: 'idempotenz_schluessel', hinweis: 'Ungültige Anfrage. Bitte ladet die Seite neu.' }
@@ -154,7 +153,6 @@ export function validiereBuchungsanfrage(body: unknown, jetzt: Date = new Date()
       datum, zeitslot, loge_id: logeId.toLowerCase(), kinder_anzahl: kinder, erwachsene_anzahl: erwachsene,
       vorname, nachname, telefon: normalisiereTelefon(telefonRoh), email,
       notizen: notizen ? notizen : null,
-      newsletter_opt_in: b.newsletter_opt_in === true,
       idempotenz_schluessel: schluessel.toLowerCase(),
     },
   }

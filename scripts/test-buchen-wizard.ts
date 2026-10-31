@@ -8,6 +8,7 @@ import {
   istWaehlbar, euro, datumLang, schrittFuerFeld, LEERER_KONTAKT, HINWEIS_NEUER_SCHLUESSEL,
 } from '../src/components/buchen/wizardLogik'
 import { symbolFuerLoge } from '../src/components/buchen/LogenSymbol'
+import { dsgvoAnzeige } from '../src/lib/utils/kundeAnzeige'
 import { sichereBildUrl } from '../src/lib/online-buchung/validierung'
 
 let fehlgeschlagen = 0
@@ -67,6 +68,12 @@ pruefe('Symbole pro Loge', [
   'Anna & Elsa', 'Paw Patrol Jungs', 'Paw Patrol Mädchen', 'Marvel Spiderman', 'Safari', 'Einhorn Schloss',
   'Einhorn Regenbogen', 'Babywelt Junge', 'Babywelt Märchen', 'BBQ Zelt', 'Runde Tische unten', 'Neue Loge',
 ].map(symbolFuerLoge), ['schneeflocke', 'pfote_blau', 'pfote_rosa', 'netz', 'loewe', 'schloss', 'regenbogen', 'rassel', 'mond', 'zelt', 'tisch', 'ballon'])
+
+// Kundenakte: DSGVO-Anzeige
+pruefe('DSGVO Einwilligung', dsgvoAnzeige(true, 'KI LENA'), '✓ Einwilligung erteilt')
+pruefe('DSGVO online angelegt', dsgvoAnzeige(false, 'ONLINE'), 'Online-Buchung (Vertrag)')
+pruefe('DSGVO sonst nicht erteilt', dsgvoAnzeige(false, 'KI LENA'), '✗ Nicht erteilt')
+pruefe('DSGVO ohne Reservierung', dsgvoAnzeige(false, null), '✗ Nicht erteilt')
 
 // Logen-Fotos: nur https
 pruefe('Foto https ok', sichereBildUrl('https://x.supabase.co/storage/v1/object/public/logen/safari.jpg'), 'https://x.supabase.co/storage/v1/object/public/logen/safari.jpg')

@@ -112,6 +112,7 @@ async function reservieren(daten: Record<string, unknown>): Promise<Antwort> {
 function buchung(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     vorname: 'Test', nachname: 'Online Phase4', telefon: FAKE_TELEFON, email: 'test-phase4@example.com', notizen: 'Testbuchung Phase 4',
+    // newsletter_opt_in: true wird vom Server ignoriert (Neukunden online immer false)
     agb_akzeptiert: true, newsletter_opt_in: true, website: '',
     turnstile_token: 'XXXX.DUMMY.TOKEN.XXXX', idempotenz_schluessel: randomUUID(), erwachsene_anzahl: 4, ...over,
   }
@@ -165,6 +166,9 @@ function testeValidierung() {
   fall({ vorname: 'x'.repeat(61) }, 'vorname', 'Vorname > 60 Zeichen abgelehnt')
   fall({ notizen: 'x'.repeat(501) }, 'notizen', 'Notizen > 500 Zeichen abgelehnt')
   fall({ agb_akzeptiert: 'true' }, 'agb_akzeptiert', 'AGB muss exakt true sein')
+  // Newsletter: Feld wird ignoriert (auch ungültige Werte führen nicht mehr zu 400)
+  const nl = validiereBuchungsanfrage({ ...gut, newsletter_opt_in: 'ja' }, jetzt)
+  pruefe(nl.ok && !('newsletter_opt_in' in nl.daten), 'newsletter_opt_in wird ignoriert', nl)
   // Datenschutz ist keine Einwilligung mehr (Art. 6 Abs. 1 lit. b DSGVO) → Feld wird ignoriert
   pruefe(validiereBuchungsanfrage({ ...gut, datenschutz_akzeptiert: false }, jetzt).ok, 'datenschutz_akzeptiert=false wird ignoriert')
   fall({ idempotenz_schluessel: 'abc' }, 'idempotenz_schluessel', 'ungültiger Idempotenz-Schlüssel abgelehnt')
@@ -223,7 +227,7 @@ async function testeServer() {
   pruefe(res1.zahlungslink_erstellt_am === null, 'zahlungslink_erstellt_am NULL (Lena-Erinnerungs-Cron greift nicht)')
   pruefe(!!res1.stripe_session_id && res1.stripe_payment_link === b1.body.checkout_url, 'stripe_session_id + stripe_payment_link gespeichert')
   const { data: kunde1 } = await supabaseAdmin.from('kunden').select('*').eq('id', res1.kunde_id).single()
-  pruefe(kunde1?.telefon === '00000000093' && kunde1?.email === 'test-phase4@example.com' && kunde1?.newsletter_opt_in === true && kunde1?.dsgvo_einwilligung === false, 'Neukunde: Telefon normalisiert, E-Mail, Newsletter wie angekreuzt, keine DSGVO-Einwilligung (Vertrag)', kunde1)
+  pruefe(kunde1?.telefon === '00000000093' && kunde1?.email === 'test-phase4@example.com' && kunde1?.newsletter_opt_in === false && kunde1?.dsgvo_einwilligung === false, 'Neukunde: Telefon normalisiert, E-Mail, newsletter_opt_in=false trotz true im Request, keine DSGVO-Einwilligung (Vertrag)', kunde1)
   const s1 = await stripe.checkout.sessions.retrieve(res1.stripe_session_id)
   pruefe(s1.metadata?.quelle === 'ONLINE' && s1.metadata?.reservierung_id === res1.id, 'Session-Metadaten quelle=ONLINE + reservierung_id')
   const dauer = s1.expires_at - s1.created
