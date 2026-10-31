@@ -7,6 +7,8 @@ import {
   preisVorschau, maxKinderFuerLoge, pruefeKontakt, reaktionAufAntwort, monatPlus, kalenderWochen,
   istWaehlbar, euro, datumLang, schrittFuerFeld, LEERER_KONTAKT, HINWEIS_NEUER_SCHLUESSEL,
 } from '../src/components/buchen/wizardLogik'
+import { symbolFuerLoge } from '../src/components/buchen/LogenSymbol'
+import { sichereBildUrl } from '../src/lib/online-buchung/validierung'
 
 let fehlgeschlagen = 0
 function pruefe(name: string, ist: unknown, soll: unknown) {
@@ -57,6 +59,18 @@ pruefe('wählbar nur frei/wenige', (['frei', 'wenige', 'ausgebucht', 'geschlosse
 pruefe('euro ganz', euro(27), '27\u00a0€')
 pruefe('euro Cent', euro(27.6), '27,60\u00a0€')
 pruefe('datumLang', datumLang('2026-11-14'), 'Samstag, 14. November 2026')
+
+// Logen-Symbole (alle 11 Logen aus der DB, Stand 31.10.2026)
+pruefe('Symbole pro Loge', [
+  'Anna & Elsa', 'Paw Patrol Jungs', 'Paw Patrol Mädchen', 'Marvel Spiderman', 'Safari', 'Einhorn Schloss',
+  'Einhorn Regenbogen', 'Babywelt Junge', 'Babywelt Märchen', 'BBQ Zelt', 'Runde Tische unten', 'Neue Loge',
+].map(symbolFuerLoge), ['schneeflocke', 'pfote_blau', 'pfote_rosa', 'netz', 'loewe', 'schloss', 'regenbogen', 'rassel', 'mond', 'zelt', 'tisch', 'ballon'])
+
+// Logen-Fotos: nur https
+pruefe('Foto https ok', sichereBildUrl('https://x.supabase.co/storage/v1/object/public/logen/safari.jpg'), 'https://x.supabase.co/storage/v1/object/public/logen/safari.jpg')
+pruefe('Foto http abgelehnt', sichereBildUrl('http://example.de/a.jpg'), null)
+pruefe('Foto javascript: abgelehnt', sichereBildUrl('javascript:alert(1)'), null)
+pruefe('Foto leer abgelehnt', sichereBildUrl(''), null)
 
 console.log(fehlgeschlagen ? `\n❌ ${fehlgeschlagen} Test(s) fehlgeschlagen` : '\n✅ Alle Tests grün')
 process.exit(fehlgeschlagen ? 1 : 0)

@@ -1,5 +1,6 @@
 // Kleine UI-Bausteine der öffentlichen Online-Buchung (Upsalla-Farben, Touch ≥ 48px).
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { StatusSymbol, type StatusArt } from './StatusSymbol'
 
 export const TITEL_SCHRIFT = '[font-family:var(--font-fredoka),var(--font-nunito),sans-serif]'
 
@@ -42,12 +43,12 @@ const HINWEIS_KLASSEN: Record<HinweisTon, string> = {
   warnung: 'bg-ups-creme text-[#6b4a00] ring-ups-gelb',
   fehler: 'bg-red-50 text-red-800 ring-red-200',
 }
-const HINWEIS_SYMBOL: Record<HinweisTon, string> = { info: 'ℹ️', warnung: '⏳', fehler: '⚠️' }
+const HINWEIS_SYMBOL: Record<HinweisTon, StatusArt> = { info: 'info', warnung: 'warten', fehler: 'warnung' }
 
 export function Hinweis({ ton = 'info', children }: { ton?: HinweisTon; children: ReactNode }) {
   return (
     <div role={ton === 'info' ? 'status' : 'alert'} className={`mb-4 flex gap-3 rounded-2xl p-4 text-[15px] leading-snug ring-1 ${HINWEIS_KLASSEN[ton]}`}>
-      <span aria-hidden className="text-lg leading-none">{HINWEIS_SYMBOL[ton]}</span>
+      <StatusSymbol art={HINWEIS_SYMBOL[ton]} className="h-6 w-6 shrink-0" />
       <div>{children}</div>
     </div>
   )

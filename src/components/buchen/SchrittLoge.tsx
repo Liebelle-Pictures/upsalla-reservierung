@@ -1,6 +1,8 @@
 // Schritt 2: Uhrzeit wählen, dann eine freie Loge. Teilweise belegte Logen erscheinen ganz
 // normal, nur mit der passenden Höchstzahl an Kindern (kommt vom Server).
-import { datumLang, euro, slotBezeichnung, type TagAntwort } from './wizardLogik'
+import { datumLang, euro, slotBezeichnung, TEXT_GANZ, TEXT_GETEILT_ERKLAERUNG, TEXT_GETEILT_KARTE, type TagAntwort } from './wizardLogik'
+import { Haekchen } from './StatusSymbol'
+import { GeteiltSymbol, LogenBild } from './LogenSymbol'
 import { Hinweis, Karte, Knopf, Lader, SchrittTitel } from './ui'
 
 export function SchrittLoge({ datum, tag, laedt, fehler, hinweis, zeitslot, logeId, onSlot, onLoge, onDatumAendern, onNeuLaden }: {
@@ -74,6 +76,11 @@ export function SchrittLoge({ datum, tag, laedt, fehler, hinweis, zeitslot, loge
           {slot && (
             <>
               <h3 className="mb-2 mt-6 text-sm font-extrabold uppercase tracking-wide text-ups-blau">Eure Loge</h3>
+              {slot.logen.some(l => l.geteilt) && (
+                <p className="mb-3 flex gap-2 rounded-2xl bg-ups-creme/70 px-3.5 py-2.5 text-[14px] font-semibold leading-snug text-[#6b4a00] ring-1 ring-ups-gelb/50">
+                  <GeteiltSymbol className="mt-0.5 h-4 w-4 shrink-0" />{TEXT_GETEILT_ERKLAERUNG}
+                </p>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 {slot.logen.map(l => {
                   const aktiv = l.loge_id === logeId
@@ -87,18 +94,19 @@ export function SchrittLoge({ datum, tag, laedt, fehler, hinweis, zeitslot, loge
                         aktiv ? 'bg-ups-eis ring-ups-blau' : 'bg-white ring-ups-hell hover:ring-ups-himmel'
                       }`}
                     >
-                      <span aria-hidden className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl ${l.ist_babywelt ? 'bg-pink-100' : 'bg-ups-creme'}`}>
-                        {l.ist_babywelt ? '🧸' : '🎈'}
-                      </span>
+                      <LogenBild name={l.name} bildUrl={l.bild_url} className="h-14 w-14" />
                       <span className="min-w-0 flex-1">
                         <span className="block text-[17px] font-extrabold leading-tight text-ups-navy">{l.name}</span>
-                        <span className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
                           bis {l.max_kinder} Kinder
                           {l.ist_babywelt && <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs font-bold text-pink-700">Babywelt</span>}
+                          {l.geteilt
+                            ? <span className="inline-flex items-center gap-1 rounded-full bg-ups-creme px-2 py-0.5 text-xs font-bold text-[#6b4a00] ring-1 ring-ups-gelb/60"><GeteiltSymbol className="h-3.5 w-3.5" />{TEXT_GETEILT_KARTE}</span>
+                            : <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-bold text-ups-gruen ring-1 ring-green-200">{TEXT_GANZ}</span>}
                         </span>
                       </span>
                       <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${aktiv ? 'bg-ups-blau text-white' : 'ring-2 ring-ups-hell'}`}>
-                        {aktiv ? '✓' : ''}
+                        {aktiv && <Haekchen className="h-4 w-4" />}
                       </span>
                     </button>
                   )

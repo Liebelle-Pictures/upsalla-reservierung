@@ -1,5 +1,6 @@
 // Fortschrittsanzeige der 5 Schritte. Erledigte Schritte sind antippbar (zurückspringen).
 import { SCHRITTE, type Schritt } from './wizardLogik'
+import { Haekchen } from './StatusSymbol'
 
 export function Fortschritt({ schritt, onSpringe }: { schritt: Schritt; onSpringe: (s: Schritt) => void }) {
   return (
@@ -27,7 +28,7 @@ export function Fortschritt({ schritt, onSpringe }: { schritt: Schritt; onSpring
                     : erledigt ? 'bg-ups-blau text-white'
                     : 'bg-white text-gray-400 ring-2 ring-ups-hell'
                 }`}>
-                  {erledigt ? '✓' : nr}
+                  {erledigt ? <Haekchen className="h-4 w-4" /> : nr}
                 </span>
               </button>
               <span className={`-mt-1 text-center text-[11px] font-bold leading-tight sm:text-xs ${aktiv ? 'text-ups-navy' : 'text-gray-500'}`}>{name}</span>

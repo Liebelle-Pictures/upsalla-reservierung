@@ -2,8 +2,9 @@
 import type { ReactNode } from 'react'
 import { STORNIERUNGSBEDINGUNGEN_TEXT } from '@/lib/stripe/texte'
 import { STRIPE_GUELTIGKEIT_SEKUNDEN } from '@/lib/online-buchung/konfiguration'
-import { datumLang, euro, preisVorschau, type Kontakt, type LogeOption, type Schritt, type SlotOption } from './wizardLogik'
+import { datumLang, euro, preisVorschau, TEXT_GANZ, TEXT_GETEILT, type Kontakt, type LogeOption, type Schritt, type SlotOption } from './wizardLogik'
 import { Karte, SchrittTitel } from './ui'
+import { GeteiltSymbol, LogenBild } from './LogenSymbol'
 
 function Zeile({ label, wert, schritt, onAendern }: { label: string; wert: ReactNode; schritt?: Schritt; onAendern?: (s: Schritt) => void }) {
   return (
@@ -41,7 +42,14 @@ export function SchrittUebersicht({ datum, slot, loge, kinder, erwachsene, woche
         <dl className="divide-y divide-ups-hell">
           <Zeile label="Datum" wert={datumLang(datum)} schritt={1} onAendern={onAendern} />
           <Zeile label="Uhrzeit" wert={`${slot.start}–${slot.ende} Uhr`} schritt={2} onAendern={onAendern} />
-          <Zeile label="Loge" wert={loge.name} schritt={2} onAendern={onAendern} />
+          <Zeile label="Loge" wert={<>
+            <span className="flex items-center justify-end gap-2">
+              <LogenBild name={loge.name} bildUrl={loge.bild_url} className="h-8 w-8" />{loge.name}
+            </span>
+            {loge.geteilt
+              ? <span className="mt-1.5 flex gap-1.5 rounded-xl bg-ups-creme/70 px-2.5 py-1.5 text-left text-[13px] font-semibold leading-snug text-[#6b4a00]"><GeteiltSymbol className="mt-px h-4 w-4 shrink-0" />{TEXT_GETEILT}</span>
+              : <span className="mt-1 block text-[13px] font-semibold text-ups-gruen">{TEXT_GANZ}</span>}
+          </>} schritt={2} onAendern={onAendern} />
           <Zeile label="Personen" wert={`${kinder} ${kinder === 1 ? 'Kind' : 'Kinder'}, ${erwachsene} ${erwachsene === 1 ? 'Erwachsener' : 'Erwachsene'}`} schritt={3} onAendern={onAendern} />
           <Zeile label="Kontakt" wert={<>{kontakt.vorname} {kontakt.nachname}<br /><span className="font-semibold">{kontakt.telefon}</span><br /><span className="font-semibold">{kontakt.email}</span></>} schritt={4} onAendern={onAendern} />
           {kontakt.notizen.trim() && <Zeile label="Nachricht" wert={<span className="font-semibold">{kontakt.notizen}</span>} schritt={4} onAendern={onAendern} />}

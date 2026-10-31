@@ -2,21 +2,24 @@
 // Wird im OeffentlicherRahmen angezeigt (Layout /buchen bzw. direkt auf /zahlung/abgebrochen).
 import type { ReactNode } from 'react'
 import { TITEL_SCHRIFT } from './ui'
+import { StatusSymbol, type StatusArt } from './StatusSymbol'
 
 type Ton = 'erfolg' | 'warten' | 'hinweis' | 'fehler'
 
-const FARBEN: Record<Ton, { kreis: string; titel: string; symbol: string }> = {
-  erfolg: { kreis: 'bg-green-100', titel: 'text-ups-gruen', symbol: '🎉' },
-  warten: { kreis: 'bg-ups-eis', titel: 'text-ups-navy', symbol: '⏳' },
-  hinweis: { kreis: 'bg-ups-creme', titel: 'text-ups-navy', symbol: '↩️' },
-  fehler: { kreis: 'bg-red-50', titel: 'text-red-700', symbol: '⚠️' },
+const FARBEN: Record<Ton, { kreis: string; titel: string; symbol: StatusArt }> = {
+  erfolg: { kreis: 'bg-green-50', titel: 'text-ups-gruen', symbol: 'erfolg' },
+  warten: { kreis: 'bg-ups-eis', titel: 'text-ups-navy', symbol: 'warten' },
+  hinweis: { kreis: 'bg-ups-eis', titel: 'text-ups-navy', symbol: 'zurueck' },
+  fehler: { kreis: 'bg-ups-creme', titel: 'text-red-700', symbol: 'warnung' },
 }
 
 export function StatusKarte({ ton, titel, children }: { ton: Ton; titel: string; children?: ReactNode }) {
   const f = FARBEN[ton]
   return (
     <div className="mx-auto mt-2 w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-ups-hell sm:mt-6 sm:p-8">
-      <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full text-4xl ${f.kreis}`} aria-hidden>{f.symbol}</div>
+      <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full ${f.kreis}`}>
+        <StatusSymbol art={f.symbol} className="h-14 w-14" />
+      </div>
       <h1 className={`${TITEL_SCHRIFT} mb-3 text-3xl font-semibold ${f.titel}`}>{titel}</h1>
       <div className="space-y-3 text-base text-gray-700">{children}</div>
     </div>

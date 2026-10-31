@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ladeOnlineStandort } from '@/lib/online-buchung/standort'
 import { istGueltigesDatum, istImBuchungsfenster } from '@/lib/online-buchung/validierung'
 import { berechneVerfuegbarkeit } from '@/lib/verfuegbarkeit'
+import { ladeLogenBilder } from '@/lib/online-buchung/logenBilder'
 import { getVerfuegbareSlots, zeitslotZeitraum } from '@/lib/utils/zeitslots'
 import { KIND_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, ERWACHSENE_PREIS_WOCHENTAG } from '@/lib/utils/preise'
 
@@ -18,6 +19,10 @@ interface LogeAntwort {
   ist_babywelt: boolean
   // Höchstzahl Kinder, die ihr in dieser Loge/diesem Slot buchen könnt
   max_kinder: number
+  // Am zweiten Tisch feiert bereits eine andere Gruppe (keine Details über diese Gruppe)
+  geteilt: boolean
+  // Foto der Loge (Migration 012), sonst null → Widget zeigt das Themen-Symbol
+  bild_url: string | null
 }
 
 interface SlotAntwort {
@@ -41,7 +46,10 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/buchen/[
     return NextResponse.json({ datum, buchbar: false, grund: 'nicht_buchbar', slots: [] }, { headers: KEIN_CACHE })
   }
 
-  const ergebnis = await berechneVerfuegbarkeit({ standortId: standort.id, datum, modus: 'ONLINE' })
+  const [ergebnis, bilder] = await Promise.all([
+    berechneVerfuegbarkeit({ standortId: standort.id, datum, modus: 'ONLINE' }),
+    ladeLogenBilder(standort.id),
+  ])
   if (ergebnis.geschlossen) {
     return NextResponse.json({ datum, buchbar: false, grund: 'geschlossen', slots: [] }, { headers: KEIN_CACHE })
   }
@@ -52,7 +60,14 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/buchen/[
     ...zeitslotZeitraum(s.nummer, teuer),
     logen: ergebnis.verfuegbar
       .filter(v => v.zeitslot === s.nummer && v.max_kinder !== null)
-      .map(v => ({ loge_id: v.loge_id, name: v.loge_name, ist_babywelt: v.ist_babywelt, max_kinder: v.max_kinder as number })),
+      .map(v => ({
+        loge_id: v.loge_id,
+        name: v.loge_name,
+        ist_babywelt: v.ist_babywelt,
+        max_kinder: v.max_kinder as number,
+        geteilt: v.teil_belegt,
+        bild_url: bilder.get(v.loge_id) ?? null,
+      })),
   }))
 
   return NextResponse.json({

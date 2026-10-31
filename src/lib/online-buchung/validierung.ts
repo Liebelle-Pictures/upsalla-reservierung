@@ -163,3 +163,14 @@ export function validiereBuchungsanfrage(body: unknown, jetzt: Date = new Date()
 export function slotExistiert(datum: string, zeitslot: number, istTeuerterTag: boolean): boolean {
   return getVerfuegbareSlots(new Date(datum + 'T00:00:00'), istTeuerterTag).some(s => s.nummer === zeitslot)
 }
+
+// Nur echte https-Links durchlassen (zusätzlich zum CHECK-Constraint in der DB)
+export function sichereBildUrl(wert: unknown): string | null {
+  if (typeof wert !== 'string') return null
+  try {
+    const url = new URL(wert.trim())
+    return url.protocol === 'https:' ? url.toString() : null
+  } catch {
+    return null
+  }
+}

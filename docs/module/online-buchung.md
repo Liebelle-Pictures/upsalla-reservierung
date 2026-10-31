@@ -323,6 +323,14 @@ culorile Upsalla, fără Sidebar staff. Wizard în 5 pași, cu bară de progres:
     → pasul 2, `/tag` reîncărcat, loja deselectată; `IN_BEARBEITUNG` → reîncercare automată (max 5 × 2 s); 400 cu `feld` → pasul câmpului.
   - Datenschutz: provizoriu link la `upsalla-kinderpark.de/datenschutzerklaerung` (`konfiguration.ts`), decizia finală în Faza 6.
     `turnstile_token` se trimite `null` până în Faza 6.
+- **Faza 5b:**
+  - `/tag` returnează pe fiecare lojă `geteilt` (= `teil_belegt`, fără detalii despre celălalt grup) și `bild_url`.
+    Card: etichetă scurtă „Geteilte Loge · eigener Tisch” sau „Ganze Loge für euch”; deasupra listei, o singură dată
+    (doar dacă există loje geteilt), explicația completă. În Übersicht: caseta lungă „Geteilte Loge – ihr habt euren eigenen Tisch…”.
+  - Iconițe SVG proprii, generice (`LogenSymbol.tsx`, alocare după numele lojei, fallback balon), fără personaje/logouri.
+  - Fără emoji în widget și în paginile de stare: `StatusSymbol.tsx` (erfolg, warten, zurück, warnung, info, bifă).
+  - Migrația `012_logen_bild.sql`: `logen.bild_url` (doar https). Dacă e setată, cardul arată poza, altfel iconița.
+    Se încarcă separat (`logenBilder.ts`), deci ruta Lena nu se schimbă, iar fără migrație nu apare nicio eroare.
 
 ### 5.7 Securitate și integrare
 
@@ -382,6 +390,7 @@ Prompt de start pentru fiecare fază în terminal:
 ## 7. De făcut de Valeriu (în afara codului)
 
 - [x] Rulează migrația 011 în Supabase (31.10.2026)
+- [ ] Rulează migrația 012 (`logen.bild_url`) în Supabase; apoi, opțional, poze per lojă (URL https, ex. bucket public Storage)
 - [ ] Stripe Dashboard: webhook + evenimentele `checkout.session.expired`, `checkout.session.async_payment_succeeded`
       și `checkout.session.async_payment_failed`
 - [ ] Vercel: env `STAFF_NOTIFICARE_EMAIL=upsalla.reservierung@gmail.com` (Production)

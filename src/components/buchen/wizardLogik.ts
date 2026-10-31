@@ -27,7 +27,16 @@ export interface LogeOption {
   name: string
   ist_babywelt: boolean
   max_kinder: number
+  // Am zweiten Tisch feiert schon eine andere Gruppe
+  geteilt: boolean
+  // Foto der Loge (Migration 012) oder null → Symbol
+  bild_url: string | null
 }
+
+export const TEXT_GETEILT_KARTE = 'Geteilte Loge · eigener Tisch'
+export const TEXT_GETEILT_ERKLAERUNG = 'Geteilte Loge: Ihr habt euren eigenen Tisch, am zweiten Tisch der Loge feiert eine andere Gruppe.'
+export const TEXT_GETEILT = 'Geteilte Loge – ihr habt euren eigenen Tisch, am zweiten Tisch feiert eine andere Gruppe.'
+export const TEXT_GANZ = 'Ganze Loge für euch'
 
 export interface SlotOption {
   zeitslot: number
