@@ -41,6 +41,21 @@
   --status-gray-bg:  #F4F4F5;
 }
 
+/* === Upsalla-Farben (öffentliche Online-Buchung /buchen, von upsalla-kinderpark.de) === */
+@theme {
+  --color-ups-navy:    #014d78;
+  --color-ups-blau:    #0372b1;
+  --color-ups-blau-dunkel: #025a8c;
+  --color-ups-himmel:  #74c0e3;
+  --color-ups-hell:    #c8e7f5;
+  --color-ups-eis:     #eef7fc;
+  --color-ups-gelb:    #ffda00;
+  --color-ups-creme:   #fff1b6;
+  --color-ups-orange:  #ef6d00;
+  --color-ups-gruen:   #418857;
+  --color-ups-koralle: #f26b6b;
+}
+
 @theme inline {
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);

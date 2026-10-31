@@ -64,7 +64,7 @@ export type ValidierungsErgebnis =
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 // Pragmatisch: etwas@etwas.tld, keine Leerzeichen
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 export const GRENZEN = {
   kinder: { min: 1, max: 20 },

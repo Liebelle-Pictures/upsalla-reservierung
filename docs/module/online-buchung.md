@@ -312,6 +312,18 @@ culorile Upsalla, fără Sidebar staff. Wizard în 5 pași, cu bară de progres:
 - **erfolg**: „Euer Termin ist fix!” + rezumat + „Bestätigung kommt per SMS und E-Mail”.
   Dacă webhook-ul n-a sosit încă: „Zahlung wird bestätigt…” cu reîncărcare automată după câteva secunde.
 
+- **Implementat în Faza 5, cu precizări:**
+  - Componente în `src/components/buchen/`: `BuchungsWizard` (client, starea celor 5 pași), `Schritt*`, `Fortschritt`,
+    `ui.tsx` (butoane ≥48px), `OeffentlicherRahmen` (logo + footer, folosit și de `/zahlung/abgebrochen`).
+    Logica pură e în `wizardLogik.ts` (preț live din `preise.ts`, validare contact, reacția la răspunsurile `reservieren`).
+    Test: `npx tsx scripts/test-buchen-wizard.ts`.
+  - Culori Upsalla (din CSS-ul upsalla-kinderpark.de) ca token-uri Tailwind `ups-*` în `globals.css`; titluri în Fredoka; logo în `public/buchen/`.
+  - Fiecare pas e o intrare în istoricul browserului (butonul „înapoi” de pe telefon = pasul anterior).
+  - 409: `ABGELAUFEN`/`SCHLUESSEL_VERWENDET` → cheie nouă, datele rămân, mesaj în Übersicht; `SLOT_BELEGT`/`KAPAZITAET`/`LOGE_UNGUELTIG`
+    → pasul 2, `/tag` reîncărcat, loja deselectată; `IN_BEARBEITUNG` → reîncercare automată (max 5 × 2 s); 400 cu `feld` → pasul câmpului.
+  - Datenschutz: provizoriu link la `upsalla-kinderpark.de/datenschutzerklaerung` (`konfiguration.ts`), decizia finală în Faza 6.
+    `turnstile_token` se trimite `null` până în Faza 6.
+
 ### 5.7 Securitate și integrare
 
 - `src/proxy.ts`: adaugă `buchen` și `api/buchen` în lista de excepții a matcher-ului (lângă `zahlung|agb|p/`).
@@ -391,4 +403,4 @@ Prompt de start pentru fiecare fază în terminal:
 ## Status
 
 - [x] Faza 0  - [x] Faza 1  - [x] Faza 2  - [x] Faza 3
-- [x] Faza 4  - [ ] Faza 5  - [ ] Faza 6  - [ ] Faza 7
+- [x] Faza 4  - [x] Faza 5  - [ ] Faza 6  - [ ] Faza 7

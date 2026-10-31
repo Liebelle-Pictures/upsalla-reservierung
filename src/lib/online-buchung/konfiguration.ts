@@ -13,3 +13,11 @@ export const STRIPE_GUELTIGKEIT_SEKUNDEN = 1800
 export const RATE_LIMIT = { anzahl: 5, minuten: 10 } as const
 // Alle Datumsangaben beziehen sich auf die Zeitzone des Parks
 export const ZEITZONE = 'Europe/Berlin'
+
+// Öffentliche Links/Kontakt im Widget. Datenschutz: vorerst die Seite von Upsalla
+// (Text für die Online-Buchung folgt in Phase 6).
+export const DATENSCHUTZ_URL = 'https://upsalla-kinderpark.de/datenschutzerklaerung'
+export const IMPRESSUM_URL = 'https://upsalla-kinderpark.de/impressum'
+export const UPSALLA_WEBSITE_URL = 'https://upsalla-kinderpark.de/'
+export const TELEFON_ANZEIGE = '0202 2623339'
+export const TELEFON_LINK = 'tel:+492022623339'

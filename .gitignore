@@ -44,3 +44,6 @@ next-env.d.ts
 Geburtstagskalender_Reservierungen.xlsx
 Geburtstagskalender_Neue_Reservierungen*.xlsx
 Manuelle_Nacherfassung.csv
+
+# Screenshots Online-Buchung (lokal, nicht versionieren)
+/.capturi-faza5/
