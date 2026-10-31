@@ -30,8 +30,10 @@ let fehlgeschlagen = 0
 async function aufraeumen() {
   const { data: kunde } = await supabaseAdmin.from('kunden').select('id').eq('telefon', TEST_TELEFON).maybeSingle()
   if (kunde) {
-    await supabaseAdmin.from('reservierungen').delete().eq('kunde_id', kunde.id).gte('datum', TEST_VON).lte('datum', TEST_BIS)
-    await supabaseAdmin.from('kunden').delete().eq('id', kunde.id)
+    const { error: e1 } = await supabaseAdmin.from('reservierungen').delete().eq('kunde_id', kunde.id).gte('datum', TEST_VON).lte('datum', TEST_BIS)
+    if (e1) console.error('Aufräumen Reservierungen fehlgeschlagen:', e1.message)
+    const { error: e2 } = await supabaseAdmin.from('kunden').delete().eq('id', kunde.id)
+    if (e2) console.error('Aufräumen Kunde fehlgeschlagen:', e2.message)
   }
 }
 
@@ -145,13 +147,23 @@ async function main() {
   })
   pruefe('Anon gesperrt', !!anonFehler, anonFehler ? `abgelehnt: ${anonFehler.message}` : 'Aufruf ging durch (falsch!)')
 
-  await aufraeumen()
-  console.log(`\nTestdaten aufgeräumt. ${fehlgeschlagen === 0 ? 'ALLE TESTS BESTANDEN' : `${fehlgeschlagen} TEST(S) FEHLGESCHLAGEN`}`)
-  process.exit(fehlgeschlagen === 0 ? 0 : 1)
 }
 
-main().catch(async (err) => {
-  console.error('Unerwarteter Fehler:', err)
-  await aufraeumen()
-  process.exit(1)
-})
+// Aufräumen läuft IMMER (finally) — auch wenn ein Test mittendrin abbricht
+async function ausfuehren() {
+  let abgebrochen = false
+  try {
+    await main()
+  } catch (err) {
+    abgebrochen = true
+    console.error('Unerwarteter Fehler:', err)
+  } finally {
+    await aufraeumen()
+    console.log('\nTestdaten aufgeräumt.')
+  }
+  const ok = !abgebrochen && fehlgeschlagen === 0
+  console.log(ok ? 'ALLE TESTS BESTANDEN' : abgebrochen ? 'TEST ABGEBROCHEN' : `${fehlgeschlagen} TEST(S) FEHLGESCHLAGEN`)
+  process.exit(ok ? 0 : 1)
+}
+
+ausfuehren()

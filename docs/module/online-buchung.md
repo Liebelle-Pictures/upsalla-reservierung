@@ -331,7 +331,7 @@ Prompt de start pentru fiecare fază în terminal:
 
 ## 7. De făcut de Valeriu (în afara codului)
 
-- [ ] Rulează migrația 011 în Supabase
+- [x] Rulează migrația 011 în Supabase (31.10.2026)
 - [ ] Stripe Dashboard: webhook + evenimentul `checkout.session.expired`
 - [ ] Cont Cloudflare Turnstile (gratuit) → chei în `.env.local` și Vercel
 - [ ] Upsalla: confirmă vorlauf-ul minim (2 zile?) și cât de departe în viitor se poate rezerva
@@ -341,5 +341,5 @@ Prompt de start pentru fiecare fază în terminal:
 
 ## Status
 
-- [x] Faza 0  - [x] Faza 1  - [ ] Faza 2  - [ ] Faza 3
+- [x] Faza 0  - [x] Faza 1  - [x] Faza 2  - [ ] Faza 3
 - [ ] Faza 4  - [ ] Faza 5  - [ ] Faza 6  - [ ] Faza 7
