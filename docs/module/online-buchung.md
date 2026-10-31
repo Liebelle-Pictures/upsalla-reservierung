@@ -256,14 +256,40 @@ Pași:
   între timp ocupat de altcineva. Webhook-ul o setează totuși BEZAHLT și creează o înregistrare
   în `kunden_anfragen` („Online-Buchung bezahlt, Slot evtl. doppelt belegt – bitte prüfen”).
 
+- **Implementat în Faza 4, cu abateri/precizări:**
+  - `client.ts`: funcție pură `baueAnzahlungsSessionParameter`; opțiuni noi `gueltigkeitSekunden`, `successUrl`,
+    `cancelUrl`, `zusatzMetadata` (nu poate suprascrie `reservierung_id`). Textul de storno e în `src/lib/stripe/texte.ts`
+    (fără import Stripe, utilizabil în widget). Lena verificată cu `scripts/test-stripe-lena-unveraendert.ts`
+    (compară cu funcția reală de la commit-ul `167f2e1`, plus sesiune reală în test mode, plus text SMS).
+  - Comutatorul în webhook/cron e `metadata.quelle === 'ONLINE'`: blocul Lena din webhook are **0 linii modificate**.
+    Se tratează și `checkout.session.async_payment_succeeded` (doar online).
+  - success/cancel URL se construiesc din `request.nextUrl.origin` (merge local, pe Vercel Preview și în producție).
+  - `reservieren` răspunde la 409 cu `{ grund, hinweis }`. `grund`: `ABGELAUFEN` / `SCHLUESSEL_VERWENDET`
+    → widget-ul generează cheie nouă; `SLOT_BELEGT` / `KAPAZITAET` / `LOGE_UNGUELTIG` → înapoi la pasul 2;
+    `IN_BEARBEITUNG` → repetă același request; `BEREITS_BEZAHLT`. O cheie repetată cu rezervarea STORNIERT
+    sau cu sesiunea expirată → `ABGELAUFEN` („Die Zeit ist abgelaufen, bitte startet die Buchung neu.”).
+  - Căutarea clientului compară telefoanele normalizat (E.164), pentru că în DB formatele sunt amestecate
+    (`0…`, `+49…`, cu spații). Clienții noi se salvează `0…` fără spații.
+  - Sesiunile online setează explicit `payment_method_types`: `card` (include Apple Pay/Google Pay) + `paypal` / `klarna`
+    doar dacă sunt active în cont (citit din `paymentMethodConfigurations`, cache 10 min, fallback `card`).
+    Fără SEPA sau alte metode întârziate (hold 30 min). Sesiunile Lenei nu au `payment_method_types` (Dashboard decide, ca înainte).
+  - `checkout.session.async_payment_failed` (online) → STORNIERT, fără SMS (plasă de siguranță).
+  - Pagina `erfolg` la `complete` + `unpaid`: se reîncarcă de maximum 5 ori, apoi afișează textul final
+    „Eure Zahlung wird bearbeitet. Sobald sie bestätigt ist, bekommt ihr SMS und E-Mail.”
+  - Turnstile și rate limit nu sunt încă implementate (Faza 6). Marcajul e în `reservieren/route.ts`.
+  - Test: `npx tsx --env-file=.env.local scripts/test-online-reservieren.ts` (cu dev server + `stripe listen`),
+    `--zahlung` pentru cele 2 plăți manuale de test (linkurile se deschid automat în browser).
+  - Verificat 31.10.2026: ambele scripturi verzi, inclusiv plăți reale în test mode (online + Lena);
+    SMS și email primite. Lena: BEZAHLT, email preluat din Stripe, `bestaetigung_gesendet_am` rămâne NULL.
+
 ### 5.5 Confirmarea: `bestaetigung.ts`
 
 `bestaetigeOnlineBuchung(reservierungId)`, **idempotentă** prin `bestaetigung_gesendet_am`
 (UPDATE … WHERE bestaetigung_gesendet_am IS NULL RETURNING → trimite doar dacă a returnat un rând):
 - SMS GSM-7, același text ca în webhook-ul actual (termen fix + Restbetrag la fața locului).
 - Email `buchungsbestaetigungHtml` + atașament ICS (ca în webhook-ul actual).
-- Opțional (constantă în `konfiguration.ts`): email de notificare la staff
-  `upsalla.reservierung@gmail.com`: „Neue Online-Buchung”.
+- Email de notificare la staff „Neue Online-Buchung”: destinatarul vine din env `STAFF_NOTIFICARE_EMAIL`
+  (local `valeriuleo@gmail.com`, producție `upsalla.reservierung@gmail.com`). Dacă variabila lipsește, nu se trimite nimic.
 
 ### 5.6 UI: `/buchen/[standort]`
 
@@ -344,14 +370,25 @@ Prompt de start pentru fiecare fază în terminal:
 ## 7. De făcut de Valeriu (în afara codului)
 
 - [x] Rulează migrația 011 în Supabase (31.10.2026)
-- [ ] Stripe Dashboard: webhook + evenimentul `checkout.session.expired`
+- [ ] Stripe Dashboard: webhook + evenimentele `checkout.session.expired`, `checkout.session.async_payment_succeeded`
+      și `checkout.session.async_payment_failed`
+- [ ] Vercel: env `STAFF_NOTIFICARE_EMAIL=upsalla.reservierung@gmail.com` (Production)
 - [ ] Cont Cloudflare Turnstile (gratuit) → chei în `.env.local` și Vercel
 - [ ] Upsalla: confirmă vorlauf-ul minim (2 zile?) și cât de departe în viitor se poate rezerva
 - [ ] Upsalla: textul Datenschutz pentru rezervarea online (Upsalla e operatorul de date, SmartCallService
       e procesator → AVV). Verifică AGB-ul existent (`/agb`)
 - [ ] Upsalla/David: butonul „Jetzt online buchen” pe upsalla-kinderpark.de
 
+## 8. Task-uri separate după go-live (nu în acest modul)
+
+- **Normalizarea telefoanelor din `kunden`.** În DB formatele sunt amestecate (`0…`, `+49…`, cu și fără spații;
+  la 31.10.2026: 355 × `0…`, 36 × `+…`, 9 × alt format, 141 cu spații). Unele numere sunt salvate fără 0 inițial
+  (ex. `15255805519`): nu sunt recunoscute online, iar SMS-urile Twilio către ele eșuează (`zuE164` nu le poate converti).
+  De făcut: numără câți clienți au format greșit, stabilește formatul țintă (`0…` fără spații, ca la clienții online)
+  și normalizează (cu verificare de duplicate după normalizare). Rutele Lena ar trebui apoi să salveze același format.
+- Lena/staff pe funcția atomică `reserviere_online` (vezi 5.1).
+
 ## Status
 
 - [x] Faza 0  - [x] Faza 1  - [x] Faza 2  - [x] Faza 3
-- [ ] Faza 4  - [ ] Faza 5  - [ ] Faza 6  - [ ] Faza 7
+- [x] Faza 4  - [ ] Faza 5  - [ ] Faza 6  - [ ] Faza 7

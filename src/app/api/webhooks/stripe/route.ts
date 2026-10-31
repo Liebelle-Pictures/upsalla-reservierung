@@ -24,6 +24,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ fehler: 'Ungültige Signatur', details: msg }, { status: 400 })
   }
 
+  // ── Online-Buchung (metadata.quelle = 'ONLINE', nur von /api/buchen/.../reservieren gesetzt).
+  // Lena-/Personal-Sessions haben kein quelle-Feld und laufen unverändert durch den Block darunter.
+  // async_payment_succeeded: verzögerte Zahlarten (z.B. SEPA), dort kommt completed mit 'unpaid'.
+  if ((event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded')
+    && event.data.object.metadata?.quelle === 'ONLINE') {
+    const session = event.data.object
+    const reservierungId = session.metadata?.reservierung_id
+    if (reservierungId && session.payment_status === 'paid') {
+      const { markiereOnlineBuchungBezahlt, bestaetigeOnlineBuchung } = await import('@/lib/online-buchung/bestaetigung')
+      const ergebnis = await markiereOnlineBuchungBezahlt(reservierungId, (session.payment_intent as string) ?? null, new Date(event.created * 1000))
+      // Bei FEHLER 500 → Stripe wiederholt den Webhook (zusätzlich fängt der Cron stripe-abgleich es auf)
+      if (ergebnis === 'FEHLER') return NextResponse.json({ fehler: 'Verarbeitung fehlgeschlagen' }, { status: 500 })
+      // Online-Buchungen: E-Mail des Bestandskunden wird NICHT überschrieben (Doku 5.3),
+      // die Bestätigung geht an die im Checkout angegebene Adresse.
+      if (ergebnis !== 'KEINE_ONLINE_BUCHUNG') await bestaetigeOnlineBuchung(reservierungId, session.customer_details?.email ?? null)
+    }
+    return NextResponse.json({ erhalten: true })
+  }
+
+  // Abgelaufene Session: nur unbezahlte ONLINE-Buchungen mit genau dieser Session werden frei-
+  // gegeben. Lena-Links (24h) und vom Zahlungserinnerungs-Cron verfallene Sessions lösen dieses
+  // Event ebenfalls aus — sie werden durch die Bedingungen in storniereUnbezahlteOnlineBuchung
+  // nie verändert (kein Update, keine SMS).
+  // async_payment_failed: verzögerte Zahlung endgültig gescheitert (Online-Sessions erlauben nur
+  // Sofort-Zahlarten, das ist also nur ein Sicherheitsnetz). Gleiche Bedingungen, keine SMS.
+  if (event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed') {
+    const session = event.data.object
+    const reservierungId = session.metadata?.reservierung_id
+    if (reservierungId && session.metadata?.quelle === 'ONLINE') {
+      const { storniereUnbezahlteOnlineBuchung } = await import('@/lib/online-buchung/bestaetigung')
+      const storniert = await storniereUnbezahlteOnlineBuchung(reservierungId, session.id)
+      if (storniert) console.log(`[Stripe Webhook] Online-Buchung ${reservierungId} freigegeben (${event.type === 'checkout.session.expired' ? 'Session abgelaufen' : 'Zahlung fehlgeschlagen'})`)
+    }
+    return NextResponse.json({ erhalten: true })
+  }
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object
     const reservierungId = session.metadata?.reservierung_id

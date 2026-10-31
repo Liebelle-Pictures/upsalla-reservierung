@@ -27,13 +27,13 @@ export async function GET(request: NextRequest) {
   const { stripe } = await import('@/lib/stripe/client')
   const seit = Math.floor(Date.now() / 1000) - RUECKBLICK_TAGE * 24 * 60 * 60
 
-  const sessions: Array<{ id: string; payment_intent: string | null; metadata: Record<string, string> | null }> = []
+  const sessions: Array<{ id: string; payment_intent: string | null; metadata: Record<string, string> | null; email: string | null }> = []
   let startingAfter: string | undefined
   do {
     const page = await stripe.checkout.sessions.list({ limit: 100, created: { gte: seit }, starting_after: startingAfter })
     for (const s of page.data) {
       if (s.payment_status === 'paid' && s.metadata?.reservierung_id) {
-        sessions.push({ id: s.id, payment_intent: s.payment_intent as string | null, metadata: s.metadata })
+        sessions.push({ id: s.id, payment_intent: s.payment_intent as string | null, metadata: s.metadata, email: s.customer_details?.email ?? null })
       }
     }
     startingAfter = page.has_more ? page.data[page.data.length - 1].id : undefined
@@ -43,6 +43,21 @@ export async function GET(request: NextRequest) {
 
   for (const s of sessions) {
     const reservierungId = s.metadata!.reservierung_id
+
+    // Online-Buchung: eigener, idempotenter Weg (Status + SMS/E-Mail genau einmal).
+    // bestaetigeOnlineBuchung läuft auch, wenn der Webhook bezahlt gesetzt hat, aber vor dem
+    // Senden abgebrochen ist. Lena-/Personal-Sessions (ohne quelle) laufen unverändert weiter unten.
+    if (s.metadata?.quelle === 'ONLINE') {
+      const { markiereOnlineBuchungBezahlt, bestaetigeOnlineBuchung } = await import('@/lib/online-buchung/bestaetigung')
+      const ergebnis = await markiereOnlineBuchungBezahlt(reservierungId, s.payment_intent)
+      if (ergebnis === 'BEZAHLT_GESETZT') {
+        korrigiert.push(reservierungId)
+        console.error(`[Stripe-Abgleich] Webhook hat Online-Buchung ${reservierungId} nie verarbeitet (Session ${s.id}) - automatisch korrigiert`)
+      }
+      if (ergebnis === 'BEZAHLT_GESETZT' || ergebnis === 'BEREITS_BEZAHLT') await bestaetigeOnlineBuchung(reservierungId, s.email)
+      continue
+    }
+
     const { data: res } = await supabaseAdmin
       .from('reservierungen')
       .select('id, status, datum, zeitslot, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, kunden(vorname, telefon)')
