@@ -372,7 +372,8 @@ async function testeZahlung() {
   console.log('\n  Lena-Weg:')
   const { data: l } = await supabaseAdmin.from('reservierungen').select('*').eq('id', lr!.id).single()
   pruefe(l?.status === 'BESTAETIGT_BEZAHLT' && !!l?.stripe_payment_intent_id, 'GRÜN + payment_intent gespeichert (wie bisher)')
-  pruefe(l?.bestaetigung_gesendet_am === null, 'bestaetigung_gesendet_am bleibt NULL (Online-Logik nicht beteiligt)')
+  // Seit Migration 013: auch Lena-Zahlungen werden über bestaetigung_gesendet_am nur einmal bestätigt
+  pruefe(!!l?.bestaetigung_gesendet_am, 'bestaetigung_gesendet_am gesetzt (Lena-Bestätigung genau einmal)')
   const { data: lkNach } = await supabaseAdmin.from('kunden').select('email').eq('id', lk!.id).single()
   const sessionLena = await stripe.checkout.sessions.retrieve(ls.id)
   pruefe(!!lkNach?.email && lkNach.email === sessionLena.customer_details?.email, `E-Mail aus Stripe in Kunde übernommen (${lkNach?.email}) – wie bisher`)

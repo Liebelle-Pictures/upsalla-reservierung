@@ -3,6 +3,7 @@ import { konstruiereEvent } from '@/lib/stripe/webhooks'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
+import { beansprucheZahlungsbestaetigung } from '@/lib/stripe/zahlungsbestaetigung'
 
 // Stripe sendet raw body — kein JSON-Parsing durch Next.js
 export const dynamic = 'force-dynamic'
@@ -80,6 +81,9 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (res?.kunde_id) {
+        // Nur EIN Weg (Webhook / Erfolgsseite / Abgleich-Cron) sendet SMS/E-Mail — auch wenn
+        // Stripe dieses Event mehrfach liefert. Status und E-Mail-Übernahme laufen trotzdem immer.
+        const darfSenden = await beansprucheZahlungsbestaetigung(reservierungId, 'Webhook')
         const kunde = (Array.isArray(res.kunden) ? res.kunden[0] : res.kunden) as { vorname: string; nachname: string; telefon: string | null; email: string | null } | null
         const logeRaw = res.logen
         const loge = (Array.isArray(logeRaw) ? logeRaw[0] : logeRaw) as unknown as { name: string } | null
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
 
         // Zahlungsbestätigung per SMS — inkl. Restbetrag, der am Tag der Reservierung
         // vor Ort fällig ist (auf Wunsch von Upsalla).
-        if (kunde?.telefon) {
+        if (darfSenden && kunde?.telefon) {
           try {
             const { sendeSMS } = await import('@/lib/twilio/client')
             // Bindestrich statt Gedankenstrich/Halbgeviertstrich — "—"/"–" gehören nicht zum
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest) {
           // Buchungsbestätigung nachträglich verschicken — nur wenn wir die E-Mail vorher
           // NICHT hatten (sonst wurde die Bestätigung schon bei der Erstellung verschickt,
           // keine doppelte Mail).
-          if (warEmailUnbekannt) {
+          if (warEmailUnbekannt && darfSenden) {
             try {
               const { sendeEmail } = await import('@/lib/resend/client')
               const { buchungsbestaetigungHtml } = await import('@/lib/resend/templates')

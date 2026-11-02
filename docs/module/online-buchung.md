@@ -502,6 +502,38 @@ Dacă cineva pornește comutatorul fără chei, `reservieren` răspunde 503 (nu 
   și normalizează (cu verificare de duplicate după normalizare). Rutele Lena ar trebui apoi să salveze același format.
 - Lena/staff pe funcția atomică `reserviere_online` (vezi 5.1).
 
+## 9. Incident: webhook-ul Stripe din producție nu ajungea (descoperit 02.11.2026)
+
+**Constatare (Valeriu, Stripe live mode):** există un singur webhook endpoint, „Upsalla Reservierung”, cu URL
+`https://freizo.app/api/webhooks/stripe` (**fără www**), iar endpoint-ul e **Disabled**.
+
+**Cauza (foarte probabilă):** aplicația rulează pe `www.freizo.app`; Vercel răspunde la `freizo.app/...` cu **308**
+(redirecționare spre www, verificat 02.11.2026). Stripe **nu urmează redirecționări**: orice răspuns în afară de 2xx e o
+livrare eșuată. După eșecuri repetate, Stripe a dezactivat endpoint-ul. De atunci, plățile Lenei/staff s-au confirmat doar prin:
+- `/zahlung/erfolg` (clientul revine din Stripe după plată): status BEZAHLT + SMS + email;
+- cron-ul `stripe-abgleich` (zilnic, din 19.10.2026): status + SMS.
+
+**Legătura cu incidentul din 19.10.2026** (plată Lena primită, rezervarea rămasă neplătită; 3 din 214 plăți): exact clienții
+care, după plată, **nu** au revenit pe `/zahlung/erfolg` (au închis browserul/aplicația de plată). De aici „niciun tipar comun”.
+De confirmat în Stripe → Webhooks → endpoint → *Event deliveries*: răspunsuri 308 și data dezactivării.
+
+**Risc la reactivare (rezolvat înainte):** cu webhook-ul funcțional, la plățile Lenei trimiteau două căi: webhook-ul trimitea SMS-ul
+la **fiecare** livrare (Stripe livrează „cel puțin o dată”, și la reîncercări), iar `/zahlung/erfolg` trimitea SMS + email dacă
+ajungea înaintea webhook-ului → 2 SMS-uri (texte diferite), uneori 2 emailuri. Test cu 5 livrări simultane pe codul vechi: **5 SMS**.
+- Fix: `src/lib/stripe/zahlungsbestaetigung.ts` „rezervă” atomic confirmarea prin `reservierungen.bestaetigung_gesendet_am`
+  (aceeași coloană ca la online). Webhook, `/zahlung/erfolg` și `stripe-abgleich` trimit doar dacă rezervarea le reușește.
+  Statusul BEZAHLT și preluarea emailului din Stripe rulează ca înainte; textele mesajelor sunt neschimbate.
+- Migrația `013_zahlungsbestaetigung_einmalig.sql`: toate rezervările deja BEZAHLT sunt marcate ca confirmate (altfel un webhook
+  întârziat sau un link `/zahlung/erfolg` redeschis ar trimite încă o dată).
+- Ramura online era deja idempotentă (`bestaetigeOnlineBuchung`).
+- Test: `npx tsx --env-file=.env.local scripts/test-zahlungsbestaetigung.ts --http=<dev.log>` (10 rezervări paralele → 1;
+  5 webhook-uri simultane → 1 SMS; pe codul vechi: 5).
+
+**Ordinea de reactivare:** (1) migrația 013 în Supabase → (2) deploy cu fix-ul → (3) Stripe: URL cu www + evenimente + Enable,
+același secret ca `STRIPE_WEBHOOK_SECRET` din Vercel Production → (4) test event din Stripe → 200.
+**Nu** retrimite („Resend”) evenimentele vechi eșuate: blocul Lena din webhook setează BEZAHLT fără să verifice statusul, deci un
+`checkout.session.completed` vechi ar putea muta pe BEZAHLT o rezervare anulată între timp (comportament existent, task separat).
+
 ## Status
 
 - [x] Faza 0  - [x] Faza 1  - [x] Faza 2  - [x] Faza 3

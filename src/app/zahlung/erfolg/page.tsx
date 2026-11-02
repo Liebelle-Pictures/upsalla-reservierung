@@ -5,6 +5,7 @@ import { sendeEmail } from '@/lib/resend/client'
 import { buchungsbestaetigungHtml } from '@/lib/resend/templates'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
+import { beansprucheZahlungsbestaetigung } from '@/lib/stripe/zahlungsbestaetigung'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,7 +68,11 @@ export default async function ZahlungErfolgPage({ searchParams }: Props) {
               aktualisiert_am: new Date().toISOString(),
             })
             .eq('id', reservierungId)
+        }
 
+        // SMS/E-Mail nur, wenn noch kein anderer Weg (Webhook/Abgleich) bestätigt hat —
+        // auch beim Neuladen der Seite nicht noch einmal.
+        if (await beansprucheZahlungsbestaetigung(reservierungId, 'Erfolgsseite')) {
           // Bestätigungs-SMS
           if (kunde?.telefon) {
             try {

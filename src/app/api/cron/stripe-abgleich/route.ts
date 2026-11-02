@@ -3,15 +3,17 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { zeitslotZeitraum } from '@/lib/utils/zeitslots'
+import { beansprucheZahlungsbestaetigung } from '@/lib/stripe/zahlungsbestaetigung'
 
 export const dynamic = 'force-dynamic'
 
 // Upsalla-Fall (19.10.2026): Kunde hat über Lena/Freizo bezahlt, die Reservierung blieb trotzdem
-// unbezahlt/storniert in Freizo stehen. Untersuchung ergab: Stripe bestätigte die Zahlung, unser
-// Webhook (/api/webhooks/stripe) hat sie aber nicht verarbeitet — bei 3 von 214 echten Zahlungen
-// (ca. 1,4%), über mehrere Monate verteilt, kein gemeinsames Muster erkennbar (vermutlich
-// vereinzelte transiente Fehler, nicht ein deterministischer Bug). Da sich die genaue Ursache
-// nicht abschließend klären ließ, ist dieser taegliche Abgleich die robustere Absicherung: er
+// unbezahlt/storniert in Freizo stehen. Sehr wahrscheinliche Ursache (02.11.2026): der Live-Webhook-Endpoint
+// zeigte auf https://freizo.app/... (ohne www); Vercel leitet mit 308 auf www um, Stripe folgt
+// keinen Weiterleitungen → jede Zustellung schlug fehl, Stripe hat den Endpoint deaktiviert.
+// Bestätigt wurden Zahlungen nur noch über /zahlung/erfolg — wer nach dem Bezahlen nicht dorthin
+// zurückkam, blieb unbezahlt (3 von 214). Siehe docs/module/online-buchung.md, Abschnitt 9.
+// Dieser tägliche Abgleich bleibt als Absicherung: er
 // macht das System selbstheilend, UNABHÄNGIG davon, warum ein einzelner Webhook-Versuch
 // fehlschlägt. Schaut 7 Tage zurück (reicht, um jeden Ausfall binnen max. 1 Tag zu fangen),
 // korrigiert den Status und schickt die Bestätigungs-SMS nach, falls sie nie rausging.
@@ -64,15 +66,21 @@ export async function GET(request: NextRequest) {
       .eq('id', reservierungId)
       .maybeSingle()
 
-    if (!res || res.status === 'BESTAETIGT_BEZAHLT') continue
+    if (!res) continue
 
-    await supabaseAdmin
-      .from('reservierungen')
-      .update({ status: 'BESTAETIGT_BEZAHLT', stripe_payment_intent_id: s.payment_intent })
-      .eq('id', reservierungId)
+    if (res.status !== 'BESTAETIGT_BEZAHLT') {
+      await supabaseAdmin
+        .from('reservierungen')
+        .update({ status: 'BESTAETIGT_BEZAHLT', stripe_payment_intent_id: s.payment_intent })
+        .eq('id', reservierungId)
 
-    korrigiert.push(reservierungId)
-    console.error(`[Stripe-Abgleich] Webhook hat ${reservierungId} nie verarbeitet (Session ${s.id}) - automatisch korrigiert`)
+      korrigiert.push(reservierungId)
+      console.error(`[Stripe-Abgleich] Webhook hat ${reservierungId} nie verarbeitet (Session ${s.id}) - automatisch korrigiert`)
+    }
+
+    // SMS nur, wenn noch kein Weg bestätigt hat (z. B. Webhook nach dem Status-Update abgebrochen).
+    // Schon bestätigte Zahlungen → nichts.
+    if (!(await beansprucheZahlungsbestaetigung(reservierungId, 'Abgleich-Cron'))) continue
 
     // Bestätigungs-SMS nachholen — der Kunde hat ggf. nie erfahren, dass die Zahlung
     // angekommen ist, weil genau dieser Schritt im kaputten Webhook-Lauf fehlte.
