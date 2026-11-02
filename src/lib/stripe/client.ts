@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import { STORNIERUNGSBEDINGUNGEN_TEXT } from './texte'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -10,6 +11,19 @@ export interface AnzahlungsSessionParams {
   reservierungId: string
   beschreibung: string
   kundenEmail?: string
+  // ── Optionale Erweiterungen (Online-Buchung). Ohne sie entsteht exakt die bisherige
+  // Session (Lena, Personal, Zahlungserinnerung) — Defaults NICHT ändern. ──
+  // Gültigkeit in Sekunden (Stripe: 1800 bis 86400). Default 24h.
+  gueltigkeitSekunden?: number
+  // Default: APP_URL/zahlung/erfolg?session_id={CHECKOUT_SESSION_ID}
+  successUrl?: string
+  // Default: APP_URL/zahlung/abgebrochen
+  cancelUrl?: string
+  // Zusätzliche Metadaten. reservierung_id kann dadurch nicht überschrieben werden.
+  zusatzMetadata?: Record<string, string>
+  // Erlaubte Zahlarten. Ohne Angabe (Lena/Personal) entscheidet wie bisher das Stripe-Dashboard
+  // — dann wird payment_method_types gar nicht gesetzt.
+  zahlungsarten?: Stripe.Checkout.SessionCreateParams.PaymentMethodType[]
 }
 
 export interface AnzahlungsSession {
@@ -24,10 +38,14 @@ export interface AnzahlungsSession {
 // sich exakt darauf verlässt, dass jeder Link, den wir verschicken, wirklich 24h funktioniert.
 const GUELTIGKEIT_SEKUNDEN = 24 * 60 * 60
 
-export async function erstelleAnzahlungsSession(
+// Baut die Parameter für stripe.checkout.sessions.create. Reine Funktion (testbar ohne Stripe,
+// siehe scripts/test-stripe-lena-unveraendert.ts). jetztMs nur für Tests.
+export function baueAnzahlungsSessionParameter(
   params: AnzahlungsSessionParams,
-): Promise<AnzahlungsSession> {
-  const session = await stripe.checkout.sessions.create({
+  jetztMs: number = Date.now(),
+): Stripe.Checkout.SessionCreateParams {
+  const basisUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL
+  return {
     mode: 'payment',
     line_items: [
       {
@@ -39,18 +57,25 @@ export async function erstelleAnzahlungsSession(
         quantity: 1,
       },
     ],
-    metadata: { reservierung_id: params.reservierungId },
+    metadata: { ...(params.zusatzMetadata ?? {}), reservierung_id: params.reservierungId },
     customer_email: params.kundenEmail ?? undefined,
-    expires_at: Math.floor(Date.now() / 1000) + GUELTIGKEIT_SEKUNDEN,
+    expires_at: Math.floor(jetztMs / 1000) + (params.gueltigkeitSekunden ?? GUELTIGKEIT_SEKUNDEN),
     // Stornierungsbedingungen direkt auf der Checkout-Seite — rechtlich informiert vor Zahlung
     custom_text: {
       submit: {
-        message: '── STORNIERUNGSBEDINGUNGEN ──\n✓ Kostenloser Storno bis 7 Tage vor dem Termin — Anzahlung wird vollständig erstattet.\n✗ Storno unter 7 Tagen — Anzahlung verfällt.\n✓ Ausnahme: Krankheit des Kindes mit ärztlichem Attest (Vorlage am selben Tag der Stornierung).',
+        message: STORNIERUNGSBEDINGUNGEN_TEXT,
       },
     },
-    success_url: `${process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL}/zahlung/erfolg?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL}/zahlung/abgebrochen`,
-  })
+    success_url: params.successUrl ?? `${basisUrl}/zahlung/erfolg?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: params.cancelUrl ?? `${basisUrl}/zahlung/abgebrochen`,
+    ...(params.zahlungsarten ? { payment_method_types: params.zahlungsarten } : {}),
+  }
+}
+
+export async function erstelleAnzahlungsSession(
+  params: AnzahlungsSessionParams,
+): Promise<AnzahlungsSession> {
+  const session = await stripe.checkout.sessions.create(baueAnzahlungsSessionParameter(params))
 
   return { url: session.url!, id: session.id }
 }

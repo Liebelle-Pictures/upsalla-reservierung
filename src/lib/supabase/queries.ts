@@ -80,6 +80,19 @@ export async function getKunde(id: string): Promise<Kunde | null> {
   return data as unknown as Kunde | null
 }
 
+// angenommen_von der ältesten Reservierung (nach Anlagezeitpunkt) — z. B. 'ONLINE' für online
+// angelegte Kunden. null, wenn der Kunde keine Reservierung hat.
+export async function getErsteReservierungQuelle(kundeId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from('reservierungen')
+    .select('angenommen_von')
+    .eq('kunde_id', kundeId)
+    .order('erstellt_am', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  return (data?.angenommen_von as string | null | undefined) ?? null
+}
+
 export interface ReservierungKurzinfo {
   id: string
   datum: string

@@ -1,7 +1,7 @@
 # Instrucțiuni pentru Claude Code — Upsalla Projekt
 
 ## Stack
-- Next.js 14 App Router + TypeScript strict
+- Next.js 16 (App Router, middleware = src/proxy.ts) + TypeScript strict — vezi AGENTS.md
 - TailwindCSS — touch-first, buttons min. 48x48px
 - Supabase — database, auth, realtime
 - Stripe — plăți Anzahlung
@@ -26,3 +26,6 @@
 
 ## Context proiect
 Citește KONZEPT.md pentru toate detaliile proiectului.
+
+## Module în lucru
+- Online-Buchung (widget public /buchen/[standort]): citește `docs/module/online-buchung.md` înainte de orice task legat de el.

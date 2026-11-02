@@ -141,6 +141,33 @@ export async function istPreisteuerterTag(datum: Date): Promise<boolean> {
   return (await getSchulferienName(datum)) !== null
 }
 
+// Wie istPreisteuerterTag, aber für einen ganzen Zeitraum mit nur EINER Ferien-Abfrage
+// (Monatsübersicht der Online-Buchung). von/bis: 'YYYY-MM-DD', inklusiv.
+// Rückgabe: Menge der Tage ('YYYY-MM-DD'), an denen der Wochenendpreis gilt.
+export async function ladePreisteuerteTage(von: string, bis: string): Promise<Set<string>> {
+  const start = new Date(von + 'T00:00:00')
+  const ende = new Date(bis + 'T00:00:00')
+  for (let jahr = start.getFullYear(); jahr <= ende.getFullYear(); jahr++) {
+    await sicherstellenDassSchulferienGeladen(jahr)
+  }
+  const { data } = await supabaseAdmin
+    .from('nrw_schulferien')
+    .select('start_datum, end_datum')
+    .lte('start_datum', bis)
+    .gte('end_datum', von)
+  const ferien = (data as { start_datum: string; end_datum: string }[] | null) ?? []
+
+  const ergebnis = new Set<string>()
+  for (let d = start; d <= ende; d = addTage(d, 1)) {
+    const str = datumZuStr(d)
+    const tag = d.getDay()
+    if (tag === 0 || tag === 6 || getNRWFeiertagName(d) !== null || ferien.some(f => f.start_datum <= str && f.end_datum >= str)) {
+      ergebnis.add(str)
+    }
+  }
+  return ergebnis
+}
+
 // Label für UI und Lena — z.B. "NRW Schulferien – Sommerferien"
 export async function getPreisTypLabel(datum: Date): Promise<string> {
   const tag = datum.getDay()

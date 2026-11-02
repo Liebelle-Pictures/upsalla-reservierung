@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getKunde, getReservierungenFuerKunde } from '@/lib/supabase/queries'
+import { getKunde, getReservierungenFuerKunde, getErsteReservierungQuelle } from '@/lib/supabase/queries'
+import { dsgvoAnzeige } from '@/lib/utils/kundeAnzeige'
 import Link from 'next/link'
 
 interface Props {
@@ -33,9 +34,10 @@ function Zeile({ label, wert }: { label: string; wert: React.ReactNode }) {
 
 export default async function KundeDetailPage({ params }: Props) {
   const { id } = await params
-  const [kunde, reservierungen] = await Promise.all([
+  const [kunde, reservierungen, ersteQuelle] = await Promise.all([
     getKunde(id),
     getReservierungenFuerKunde(id),
+    getErsteReservierungQuelle(id),
   ])
 
   if (!kunde) notFound()
@@ -64,7 +66,7 @@ export default async function KundeDetailPage({ params }: Props) {
         <Zeile label="Telefon" wert={kunde.telefon} />
         <Zeile label="E-Mail" wert={kunde.email} />
         <Zeile label="Geburtstag Kind" wert={geburtstag} />
-        <Zeile label="DSGVO" wert={kunde.dsgvo_einwilligung ? '✓ Einwilligung erteilt' : '✗ Nicht erteilt'} />
+        <Zeile label="DSGVO" wert={dsgvoAnzeige(kunde.dsgvo_einwilligung, ersteQuelle)} />
         <Zeile label="Newsletter" wert={kunde.newsletter_opt_in ? '✓ Opt-in' : '—'} />
       </div>
 
