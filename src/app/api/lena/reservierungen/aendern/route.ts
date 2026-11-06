@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
+import { istExklusiveBelegung } from '@/lib/utils/belegung'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
+import { berechneGeburtstagsBetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { logeIstVerfuegbarFuerSlot, istGeschlossen, istWochenende } from '@/lib/utils/zeitslots'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   const { data: reservierung } = await supabaseAdmin
     .from('reservierungen')
-    .select('datum, zeitslot, loge_id, typ, kinder_anzahl, erwachsene_anzahl, notizen, status')
+    .select('datum, zeitslot, loge_id, typ, kinder_anzahl, erwachsene_anzahl, notizen, status, ganze_loge')
     .eq('id', body.id)
     .single()
 
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     if (logeKapazitaetRelevant) {
       const { data: aktiveBelegungen } = await supabaseAdmin
         .from('reservierungen')
-        .select('kinder_anzahl')
+        .select('kinder_anzahl, ganze_loge')
         .eq('loge_id', neueLogeId)
         .eq('datum', neuesDatum)
         .eq('zeitslot', neuerZeitslot)
@@ -100,8 +101,13 @@ export async function POST(request: NextRequest) {
         if (belegungen.length >= 2) {
           return NextResponse.json({ hinweis: 'Dieser Slot ist bereits mit zwei Gruppen belegt. Bitte einen anderen Termin oder eine andere Loge wählen.' })
         }
+        // Reservierung mit „ganze Loge“ (Personal/online gebucht) braucht einen komplett leeren Slot
+        if (reservierung.ganze_loge && belegungen.length >= 1) {
+          return NextResponse.json({ hinweis: 'Diese Reservierung hat die ganze Loge gebucht, im gewünschten Slot ist aber schon eine andere Gruppe. Bitte einen anderen Termin oder eine andere Loge wählen.' })
+        }
         if (belegungen.length === 1) {
-          if (belegungen[0].kinder_anzahl >= 10) {
+          // 10+ Kinder oder „ganze Loge“ (Migration 014) → exklusiv; Text bleibt wie bisher
+          if (istExklusiveBelegung(belegungen[0])) {
             return NextResponse.json({ hinweis: 'Diese Loge ist für diesen Slot exklusiv belegt (10+ Kinder). Bitte einen anderen Termin oder eine andere Loge wählen.' })
           }
           if (kinderAnzahl >= 10) {
@@ -119,7 +125,8 @@ export async function POST(request: NextRequest) {
   }
 
   const teuerterTag = await istPreisteuerterTag(new Date(neuesDatum + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, teuerterTag, erwachseneAnzahl)
+  // Bei „ganzer Loge“ bleiben mindestens 10 Kinder berechnet (sonst identisch zu bisher)
+  const gesamtbetrag = berechneGeburtstagsBetrag(kinderAnzahl, teuerterTag, erwachseneAnzahl, reservierung.ganze_loge === true)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
 
   const updates: Record<string, unknown> = {

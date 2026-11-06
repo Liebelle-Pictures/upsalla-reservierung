@@ -20,7 +20,7 @@ import { pruefeSchutz } from '@/lib/online-buchung/schutz'
 import { berechneVerfuegbarkeit } from '@/lib/verfuegbarkeit'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum } from '@/lib/utils/zeitslots'
-import { berechneGesamtbetrag, berechneAnzahlung, KIND_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG } from '@/lib/utils/preise'
+import { berechneGeburtstagsBetrag, berechneAnzahlung, istGanzeLogeWirksam, KIND_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG } from '@/lib/utils/preise'
 import { stripe, erstelleAnzahlungsSession } from '@/lib/stripe/client'
 import { ermittleSofortZahlarten } from '@/lib/stripe/zahlungsarten'
 
@@ -32,6 +32,8 @@ type Grund = 'ABGELAUFEN' | 'SCHLUESSEL_VERWENDET' | 'SLOT_BELEGT' | 'KAPAZITAET
 
 const HINWEIS_ABGELAUFEN = 'Die Zeit ist abgelaufen, bitte startet die Buchung neu.'
 const HINWEIS_SLOT_BELEGT = 'Diese Loge ist zu dieser Zeit leider schon vergeben. Wählt bitte eine andere Loge oder einen anderen Termin.'
+// Gleicher Text wie in reserviere_online (Migration 014)
+const HINWEIS_GANZE_LOGE_BELEGT = 'Die ganze Loge ist zu dieser Zeit nicht mehr frei – am Nachbartisch feiert schon eine Gruppe. Euren eigenen Tisch könnt ihr trotzdem buchen.'
 
 function konflikt(grund: Grund, hinweis: string) {
   return NextResponse.json({ grund, hinweis }, { status: 409, headers: KEIN_CACHE })
@@ -50,6 +52,7 @@ interface BestehendeBuchung {
   erwachsene_anzahl: number
   stripe_session_id: string | null
   online_hold_bis: string | null
+  ganze_loge: boolean
 }
 
 // Doppeltes Absenden (gleicher idempotenz_schluessel): denselben, noch gültigen Checkout-Link
@@ -57,6 +60,8 @@ interface BestehendeBuchung {
 async function antwortFuerBestehendeBuchung(b: BestehendeBuchung, anfrage: Buchungsanfrage): Promise<NextResponse> {
   const gleicheDaten = b.datum === anfrage.datum && b.zeitslot === anfrage.zeitslot && b.loge_id === anfrage.loge_id
     && b.kinder_anzahl === anfrage.kinder_anzahl && b.erwachsene_anzahl === anfrage.erwachsene_anzahl
+    // Das Widget schickt ganze_loge nur, wenn die Option angezeigt und angehakt ist (= wirksam)
+    && b.ganze_loge === anfrage.ganze_loge
   if (!gleicheDaten) return konflikt('SCHLUESSEL_VERWENDET', 'Bitte startet die Buchung neu.')
   if (b.status === 'BESTAETIGT_BEZAHLT') return konflikt('BEREITS_BEZAHLT', 'Diese Buchung ist bereits bezahlt. Die Bestätigung kommt per SMS und E-Mail.')
   if (b.status !== 'BESTAETIGT_AUSSTEHEND') return konflikt('ABGELAUFEN', HINWEIS_ABGELAUFEN)
@@ -78,7 +83,7 @@ async function antwortFuerBestehendeBuchung(b: BestehendeBuchung, anfrage: Buchu
   return konflikt('ABGELAUFEN', HINWEIS_ABGELAUFEN)
 }
 
-const BESTEHEND_SPALTEN = 'id, status, datum, zeitslot, loge_id, kinder_anzahl, erwachsene_anzahl, stripe_session_id, online_hold_bis'
+const BESTEHEND_SPALTEN = 'id, status, datum, zeitslot, loge_id, kinder_anzahl, erwachsene_anzahl, stripe_session_id, online_hold_bis, ganze_loge'
 
 async function ladeBuchungPerSchluessel(schluessel: string): Promise<BestehendeBuchung | null> {
   const { data } = await supabaseAdmin.from('reservierungen').select(BESTEHEND_SPALTEN).eq('idempotenz_schluessel', schluessel).maybeSingle()
@@ -142,7 +147,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/buchen/
     // 2. Loge + Slot-Regeln (verfuegbarkeit_regel prüft reserviere_online NICHT, daher hier)
     const { data: loge } = await supabaseAdmin
       .from('logen')
-      .select('id, name, standort_id, aktiv, online_buchbar, verfuegbarkeit_regel')
+      .select('id, name, standort_id, aktiv, online_buchbar, verfuegbarkeit_regel, kapazitaet_flexibel')
       .eq('id', a.loge_id)
       .maybeSingle()
     if (!loge || !loge.aktiv || !loge.online_buchbar || loge.standort_id !== standort.id) {
@@ -162,9 +167,12 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/buchen/
     if (a.kinder_anzahl > frei.max_kinder) {
       return konflikt('KAPAZITAET', `In dieser Loge sind zu dieser Zeit höchstens ${frei.max_kinder} Kinder möglich.`)
     }
+    // „Ganze Loge“: bei 10+ Kindern / BBQ Zelt ignoriert, sonst nur auf komplett leerer Loge
+    const ganzeLoge = istGanzeLogeWirksam(a.ganze_loge, a.kinder_anzahl, loge.kapazitaet_flexibel === true)
+    if (ganzeLoge && frei.teil_belegt) return konflikt('SLOT_BELEGT', HINWEIS_GANZE_LOGE_BELEGT)
 
-    // 4. Preise ausschließlich serverseitig
-    const gesamtbetrag = berechneGesamtbetrag(a.kinder_anzahl, teuer, a.erwachsene_anzahl)
+    // 4. Preise ausschließlich serverseitig (ganze Loge: mindestens 10 Kinder zum Preis des Tages)
+    const gesamtbetrag = berechneGeburtstagsBetrag(a.kinder_anzahl, teuer, a.erwachsene_anzahl, ganzeLoge)
     const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
     const paketPreisProKind = teuer ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG
 
@@ -216,6 +224,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/buchen/
       p_notizen: notizTeile.length ? notizTeile.join('\n') : null,
       p_idempotenz_schluessel: a.idempotenz_schluessel,
       p_hold_minuten: HOLD_MINUTEN,
+      p_ganze_loge: ganzeLoge,
     })
     if (rpcErr) {
       console.error('[Online-Buchung] reserviere_online fehlgeschlagen:', rpcErr.message)
@@ -242,7 +251,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/buchen/
       session = await erstelleAnzahlungsSession({
         betragCent: Math.round(anzahlungBetrag * 100),
         reservierungId,
-        beschreibung: `Anzahlung Geburtstag Upsalla – ${datumAnzeige} (${start}-${ende} Uhr, ${loge.name})`,
+        beschreibung: `Anzahlung Geburtstag Upsalla – ${datumAnzeige} (${start}-${ende} Uhr, ${loge.name}${ganzeLoge ? ', ganze Loge' : ''})`,
         kundenEmail: a.email,
         gueltigkeitSekunden: STRIPE_GUELTIGKEIT_SEKUNDEN,
         successUrl: `${basis}/erfolg?session_id={CHECKOUT_SESSION_ID}`,

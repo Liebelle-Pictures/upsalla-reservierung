@@ -116,7 +116,7 @@ export async function getReservierungenFuerKunde(kundeId: string): Promise<Reser
 export async function getReservierungenMitDetails(datum: string, standortId: string) {
   const { data } = await supabaseAdmin
     .from('reservierungen')
-    .select('id, datum, zeitslot, status, typ, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, notizen, angenommen_von, logen(name, ist_babywelt), kunden(vorname, nachname, telefon)')
+    .select('id, datum, zeitslot, status, typ, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, notizen, angenommen_von, ganze_loge, logen(name, ist_babywelt), kunden(vorname, nachname, telefon)')
     .eq('datum', datum)
     .eq('standort_id', standortId)
     .neq('status', 'STORNIERT')
@@ -144,7 +144,7 @@ export async function getAlleReservierungen(standortId: string, status?: string)
 export async function getReservierung(id: string) {
   const { data } = await supabaseAdmin
     .from('reservierungen')
-    .select('*, kunden(*), logen(name, ist_babywelt), standorte(name)')
+    .select('*, kunden(*), logen(name, ist_babywelt, kapazitaet_flexibel), standorte(name)')
     .eq('id', id)
     .single()
   return data

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { reservierungStornieren, barzahlungBestaetigen } from '@/app/actions/reservierungen'
 import { zeitslotZeitraum, GRUPPEN_ZEIT_ANZEIGE } from '@/lib/utils/zeitslots'
+import { GANZE_LOGE_MIN_KINDER } from '@/lib/utils/preise'
 
 /* ── Status-Konfiguration ── */
 const STATUS_CONFIG = {
@@ -63,6 +64,7 @@ interface Props {
     notizen: string | null
     angenommen_von: string
     erstellt_am: string
+    ganze_loge?: boolean
     kunden: { vorname: string; nachname: string; telefon: string; email: string | null } | null
     logen: { name: string; ist_babywelt?: boolean } | null
   }
@@ -236,11 +238,13 @@ export function ReservierungDetailView({ reservierung: r, istTeuerterTag }: Prop
           }}
         >
           <Abschnitt label="Reservierungsdetails" />
-          <Zeile label="Loge" wert={r.logen?.name} />
+          <Zeile label="Loge" wert={r.ganze_loge ? `${r.logen?.name ?? '—'} – ganze Loge (exklusiv)` : r.logen?.name} />
           <Zeile label="Datum" wert={datum} />
           <Zeile label="Zeitslot" wert={zeitslotText} />
           <Zeile label="Typ" wert={r.typ} />
-          <Zeile label="Kinder" wert={`${r.kinder_anzahl} Kinder`} />
+          <Zeile label="Kinder" wert={r.ganze_loge && r.kinder_anzahl < GANZE_LOGE_MIN_KINDER
+            ? `${r.kinder_anzahl} Kinder (berechnet: ${GANZE_LOGE_MIN_KINDER}, ganze Loge)`
+            : `${r.kinder_anzahl} Kinder`} />
           <Zeile label="Erwachsene" wert={r.erwachsene_anzahl} />
           <Zeile label="Angenommen von" wert={r.angenommen_von} />
           {r.notizen && <Zeile label="Notizen" wert={r.notizen} />}

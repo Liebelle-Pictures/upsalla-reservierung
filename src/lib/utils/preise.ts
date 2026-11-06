@@ -19,6 +19,26 @@ export function berechneGesamtbetrag(
   return kindPreis + erwachsenePreis
 }
 
+// „Ganze Loge reservieren“: eine Gruppe mit 1–9 Kindern bekommt die Loge exklusiv und zahlt
+// mindestens für so viele Kinder (zum Preis des Tages). Ab dieser Zahl ist die Loge ohnehin exklusiv.
+export const GANZE_LOGE_MIN_KINDER = 10
+
+// Gilt „ganze Loge“ wirklich? Bei 10+ Kindern oder flexibler Loge (BBQ Zelt) gehört die Loge der
+// Gruppe sowieso allein → ignorieren (gespeichert wird dann false, kein Aufpreis).
+export function istGanzeLogeWirksam(gewuenscht: boolean, kinderAnzahl: number, kapazitaetFlexibel: boolean): boolean {
+  return gewuenscht && !kapazitaetFlexibel && kinderAnzahl < GANZE_LOGE_MIN_KINDER
+}
+
+// Kinderzahl, mit der berechneGesamtbetrag rechnet (kinder_anzahl bleibt die echte Zahl)
+export function abrechnungsKinder(kinderAnzahl: number, ganzeLoge: boolean): number {
+  return ganzeLoge ? Math.max(kinderAnzahl, GANZE_LOGE_MIN_KINDER) : kinderAnzahl
+}
+
+// Gesamtbetrag einer Geburtstagsbuchung, ggf. mit „ganzer Loge“ (gleiche Formel wie immer)
+export function berechneGeburtstagsBetrag(kinderAnzahl: number, istWochenende: boolean, erwachseneAnzahl: number, ganzeLoge: boolean): number {
+  return berechneGesamtbetrag(abrechnungsKinder(kinderAnzahl, ganzeLoge), istWochenende, erwachseneAnzahl)
+}
+
 export function berechneAnzahlung(gesamtbetrag: number): number {
   return Math.round(gesamtbetrag * 0.2 * 100) / 100
 }

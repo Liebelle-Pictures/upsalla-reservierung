@@ -6,6 +6,7 @@ import type { Loge } from '@/types/loge'
 import type { ZeitslotInfo } from '@/lib/utils/zeitslots'
 import type { Reservierung } from '@/types/reservierung'
 import { logeIstVerfuegbarFuerSlot } from '@/lib/utils/zeitslots'
+import { istExklusiveBelegung } from '@/lib/utils/belegung'
 import { ReservierungKarte } from './ReservierungKarte'
 import { FreierSlot } from './FreierSlot'
 
@@ -172,10 +173,11 @@ function LogenReihe({ datum, logen, reservierungen, zeitslots }: ReiheProps) {
                       Nicht verfügbar
                     </div>
                   )}
-                  {res.length === 1 && res[0].kinder_anzahl >= 10 && (
+                  {/* Exklusiv (10+ Kinder oder ganze Loge): ganze Karte, keine zweite Gruppe anbieten */}
+                  {res.length === 1 && istExklusiveBelegung(res[0]) && (
                     <ReservierungKarte reservierung={res[0]} />
                   )}
-                  {res.length === 1 && res[0].kinder_anzahl < 10 && (
+                  {res.length === 1 && !istExklusiveBelegung(res[0]) && (
                     <div className="flex flex-col h-full" style={{ gap: '6px', padding: '6px' }}>
                       <div style={{ flex: '1 1 0', minHeight: 0 }}>
                         <ReservierungKarte reservierung={res[0]} kompakt />

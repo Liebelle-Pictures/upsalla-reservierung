@@ -2,7 +2,10 @@
 import type { ReactNode } from 'react'
 import { STORNIERUNGSBEDINGUNGEN_TEXT } from '@/lib/stripe/texte'
 import { STRIPE_GUELTIGKEIT_SEKUNDEN } from '@/lib/online-buchung/konfiguration'
-import { datumLang, euro, preisVorschau, TEXT_GANZ, TEXT_GETEILT, type Kontakt, type LogeOption, type Schritt, type SlotOption } from './wizardLogik'
+import {
+  datumLang, euro, logenEtikett, preisVorschau, TEXT_GANZ, TEXT_TISCH_BELEGT_LANG, TEXT_TISCH_FREI_LANG,
+  type Kontakt, type LogeOption, type Schritt, type SlotOption,
+} from './wizardLogik'
 import { Karte, SchrittTitel } from './ui'
 import { GeteiltSymbol, LogenBild } from './LogenSymbol'
 
@@ -22,17 +25,20 @@ function Zeile({ label, wert, schritt, onAendern }: { label: string; wert: React
   )
 }
 
-export function SchrittUebersicht({ datum, slot, loge, kinder, erwachsene, wochenendpreis, kontakt, onAendern }: {
+export function SchrittUebersicht({ datum, slot, loge, kinder, erwachsene, wochenendpreis, ganzeLoge, kontakt, onAendern }: {
   datum: string
   slot: SlotOption
   loge: LogeOption
   kinder: number
   erwachsene: number
   wochenendpreis: boolean
+  // „Ganze Loge“ dazugebucht (nur wenn wirksam: 1–9 Kinder, leere feste Loge)
+  ganzeLoge: boolean
   kontakt: Kontakt
   onAendern: (s: Schritt) => void
 }) {
-  const p = preisVorschau(kinder, erwachsene, wochenendpreis)
+  const p = preisVorschau(kinder, erwachsene, wochenendpreis, ganzeLoge)
+  const etikett = logenEtikett(loge, kinder, ganzeLoge)
   const [kopf, ...regeln] = STORNIERUNGSBEDINGUNGEN_TEXT.split('\n')
 
   return (
@@ -41,16 +47,16 @@ export function SchrittUebersicht({ datum, slot, loge, kinder, erwachsene, woche
       <Karte>
         <dl className="divide-y divide-ups-hell">
           <Zeile label="Datum" wert={datumLang(datum)} schritt={1} onAendern={onAendern} />
-          <Zeile label="Uhrzeit" wert={`${slot.start}–${slot.ende} Uhr`} schritt={2} onAendern={onAendern} />
+          <Zeile label="Kinder" wert={`${kinder} ${kinder === 1 ? 'Kind' : 'Kinder'}, ${erwachsene} ${erwachsene === 1 ? 'Erwachsener' : 'Erwachsene'}`} schritt={2} onAendern={onAendern} />
+          <Zeile label="Uhrzeit" wert={`${slot.start}–${slot.ende} Uhr`} schritt={3} onAendern={onAendern} />
           <Zeile label="Loge" wert={<>
             <span className="flex items-center justify-end gap-2">
               <LogenBild name={loge.name} bildUrl={loge.bild_url} className="h-8 w-8" />{loge.name}
             </span>
-            {loge.geteilt
-              ? <span className="mt-1.5 flex gap-1.5 rounded-xl bg-ups-creme/70 px-2.5 py-1.5 text-left text-[13px] font-semibold leading-snug text-[#6b4a00]"><GeteiltSymbol className="mt-px h-4 w-4 shrink-0" />{TEXT_GETEILT}</span>
-              : <span className="mt-1 block text-[13px] font-semibold text-ups-gruen">{TEXT_GANZ}</span>}
-          </>} schritt={2} onAendern={onAendern} />
-          <Zeile label="Personen" wert={`${kinder} ${kinder === 1 ? 'Kind' : 'Kinder'}, ${erwachsene} ${erwachsene === 1 ? 'Erwachsener' : 'Erwachsene'}`} schritt={3} onAendern={onAendern} />
+            {etikett === 'ganz'
+              ? <span className="mt-1 block text-[13px] font-semibold text-ups-gruen">{ganzeLoge ? 'Ganze Loge – nur für euch' : TEXT_GANZ}</span>
+              : <span className="mt-1.5 flex gap-1.5 rounded-xl bg-ups-creme/70 px-2.5 py-1.5 text-left text-[13px] font-semibold leading-snug text-[#6b4a00]"><GeteiltSymbol className="mt-px h-4 w-4 shrink-0" />{etikett === 'tisch_belegt' ? TEXT_TISCH_BELEGT_LANG : TEXT_TISCH_FREI_LANG}</span>}
+          </>} schritt={3} onAendern={onAendern} />
           <Zeile label="Kontakt" wert={<>{kontakt.vorname} {kontakt.nachname}<br /><span className="font-semibold">{kontakt.telefon}</span><br /><span className="font-semibold">{kontakt.email}</span></>} schritt={4} onAendern={onAendern} />
           {kontakt.notizen.trim() && <Zeile label="Nachricht" wert={<span className="font-semibold">{kontakt.notizen}</span>} schritt={4} onAendern={onAendern} />}
         </dl>
@@ -67,6 +73,11 @@ export function SchrittUebersicht({ datum, slot, loge, kinder, erwachsene, woche
         <div className="mt-1 flex items-baseline justify-between gap-3 text-sm text-white/70">
           <span>Rest vor Ort</span><span>{euro(p.rest)}</span>
         </div>
+        {ganzeLoge && (
+          <p className="mt-3 border-t border-white/15 pt-3 text-[13px] leading-snug text-white/75">
+            Ganze Loge: berechnet werden {p.abrechenbareKinder} Kinder (ihr seid {kinder}).
+          </p>
+        )}
       </div>
 
       <section className="mt-4 rounded-3xl bg-ups-creme/60 p-5 ring-1 ring-ups-gelb/50" aria-labelledby="storno-titel">

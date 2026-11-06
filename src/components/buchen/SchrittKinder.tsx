@@ -1,31 +1,38 @@
-// Schritt 3: Anzahl Kinder und Erwachsene mit Live-Preis. Verbindlich rechnet der Server.
+// Schritt 2: Anzahl Kinder und Erwachsene mit Live-Preis — VOR der Loge, weil die Kinderzahl
+// bestimmt, welche Logen passen und ob ihr die ganze Loge habt. Verbindlich rechnet der Server.
 import { FREIE_BEGLEITPERSONEN, MINDEST_KINDER_ABRECHNUNG } from '@/lib/utils/preise'
-import { euro, preisVorschau, MAX_ERWACHSENE, type LogeOption } from './wizardLogik'
+import { datumLang, euro, preisVorschau, MAX_ERWACHSENE, MAX_KINDER } from './wizardLogik'
 import { Karte, SchrittTitel, Stepper, TITEL_SCHRIFT } from './ui'
 
-export function SchrittPersonen({ loge, maxKinder, kinder, erwachsene, wochenendpreis, preisProKind, onKinder, onErwachsene }: {
-  loge: LogeOption
-  maxKinder: number
+export function SchrittKinder({ datum, kinder, erwachsene, wochenendpreis, preisProKind, onKinder, onErwachsene, onDatumAendern }: {
+  datum: string
   kinder: number
   erwachsene: number
   wochenendpreis: boolean
-  preisProKind: number | undefined
+  preisProKind: number
   onKinder: (n: number) => void
   onErwachsene: (n: number) => void
+  onDatumAendern: () => void
 }) {
   const p = preisVorschau(kinder, erwachsene, wochenendpreis)
 
   return (
     <>
-      <SchrittTitel titel="Wer feiert mit?" untertitel={<>Loge <span className="font-bold text-ups-navy">{loge.name}</span>, bis {maxKinder} Kinder</>} />
+      <SchrittTitel
+        titel="Wer feiert mit?"
+        untertitel={<>
+          <span className="font-bold text-ups-navy">{datumLang(datum)}</span>{' · '}
+          <button type="button" onClick={onDatumAendern} className="font-bold text-ups-blau underline underline-offset-4">ändern</button>
+        </>}
+      />
       <Karte>
         <div className="divide-y divide-ups-hell">
           <Stepper
             label="Kinder"
-            beschreibung={preisProKind !== undefined ? `${euro(preisProKind)} pro Kind, max. ${maxKinder}` : `max. ${maxKinder}`}
+            beschreibung={`${euro(preisProKind)} pro Kind`}
             wert={kinder}
             min={1}
-            max={maxKinder}
+            max={MAX_KINDER}
             onChange={onKinder}
           />
           <Stepper

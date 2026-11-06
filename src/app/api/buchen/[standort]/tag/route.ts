@@ -21,6 +21,8 @@ interface LogeAntwort {
   max_kinder: number
   // Am zweiten Tisch feiert bereits eine andere Gruppe (keine Details über diese Gruppe)
   geteilt: boolean
+  // BBQ Zelt o.ä.: immer nur eine Gruppe → Loge gehört euch ganz, keine Option „ganze Loge“
+  flexibel: boolean
   // Foto der Loge (Migration 012), sonst null → Widget zeigt das Themen-Symbol
   bild_url: string | null
 }
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/buchen/[
     berechneVerfuegbarkeit({ standortId: standort.id, datum, modus: 'ONLINE' }),
     ladeLogenBilder(standort.id),
   ])
+  const flexibel = new Set(ergebnis.logen.filter(l => l.kapazitaet_flexibel).map(l => l.id))
   if (ergebnis.geschlossen) {
     return NextResponse.json({ datum, buchbar: false, grund: 'geschlossen', slots: [] }, { headers: KEIN_CACHE })
   }
@@ -66,6 +69,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/buchen/[
         ist_babywelt: v.ist_babywelt,
         max_kinder: v.max_kinder as number,
         geteilt: v.teil_belegt,
+        flexibel: flexibel.has(v.loge_id),
         bild_url: bilder.get(v.loge_id) ?? null,
       })),
   }))

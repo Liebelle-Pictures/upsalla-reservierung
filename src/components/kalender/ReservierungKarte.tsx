@@ -84,6 +84,11 @@ export function ReservierungKarte({ reservierung, kompakt }: Props) {
         <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#4B5563' }}>
           {reservierung.kinder_anzahl} Kinder
         </div>
+        {reservierung.ganze_loge && (
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 9px', borderRadius: '20px', color: '#1E3A8A', background: '#DBEAFE', border: '1px solid #93C5FD' }}>
+            Ganze Loge
+          </span>
+        )}
         <span
           style={{
             fontSize: '0.75rem',
