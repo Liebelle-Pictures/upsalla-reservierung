@@ -55,6 +55,8 @@ export interface Buchungsanfrage {
   email: string           // getrimmt, kleingeschrieben
   notizen: string | null
   idempotenz_schluessel: string
+  // Wunsch „ganze Loge“ (Modul 10). Ob er gilt, entscheidet die Route (Kinderzahl, Loge, Belegung).
+  ganze_loge: boolean
 }
 
 export type ValidierungsErgebnis =
@@ -144,6 +146,12 @@ export function validiereBuchungsanfrage(body: unknown, jetzt: Date = new Date()
   // datenschutz_akzeptiert wird nicht mehr verlangt und ignoriert.
   // newsletter_opt_in: kein Haken mehr im Widget → wird ignoriert (Neukunden online immer false)
 
+  // Optional, nur true zählt (fehlt bei alten Widget-Ständen)
+  if (b.ganze_loge !== undefined && b.ganze_loge !== null && typeof b.ganze_loge !== 'boolean') {
+    return { ok: false, feld: 'ganze_loge', hinweis: 'Ungültige Anfrage.' }
+  }
+  const ganzeLoge = b.ganze_loge === true
+
   const schluessel = text(b.idempotenz_schluessel)
   if (!schluessel || !UUID_RE.test(schluessel)) return { ok: false, feld: 'idempotenz_schluessel', hinweis: 'Ungültige Anfrage. Bitte ladet die Seite neu.' }
 
@@ -154,6 +162,7 @@ export function validiereBuchungsanfrage(body: unknown, jetzt: Date = new Date()
       vorname, nachname, telefon: normalisiereTelefon(telefonRoh), email,
       notizen: notizen ? notizen : null,
       idempotenz_schluessel: schluessel.toLowerCase(),
+      ganze_loge: ganzeLoge,
     },
   }
 }

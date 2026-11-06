@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
+import { istExklusiveBelegung } from '@/lib/utils/belegung'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
 import { berechneGesamtbetrag, berechneAnzahlung, berechneGruppenBetrag, gruppenPreisProKind } from '@/lib/utils/preise'
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
   if (logeKapazitaetRelevant) {
     const { data: aktiveBelegungen } = await supabaseAdmin
       .from('reservierungen')
-      .select('kinder_anzahl')
+      .select('kinder_anzahl, ganze_loge')
       .eq('loge_id', loge_id)
       .eq('datum', datumKorrigiert)
       .eq('zeitslot', zeitslot)
@@ -184,7 +185,8 @@ export async function POST(request: NextRequest) {
       }
       if (belegungen.length === 1) {
         const ersteGruppe = belegungen[0]
-        if (ersteGruppe.kinder_anzahl >= 10) {
+        // 10+ Kinder oder „ganze Loge“ (Migration 014) → exklusiv; Text bleibt wie bisher
+        if (istExklusiveBelegung(ersteGruppe)) {
           return NextResponse.json({ hinweis: 'Diese Loge ist für diesen Slot exklusiv belegt (10+ Kinder). Bitte einen anderen Termin oder eine andere Loge wählen.' })
         }
         if (kinder_anzahl >= 10) {
@@ -266,6 +268,13 @@ export async function POST(request: NextRequest) {
     // IS NULL ist das Kriterium in getLenaStatistik() und in der Anruf-Statistik-Heuristik).
     // Gefunden bei der Analyse der Wochenbericht-Abschlussquote vom 21.09.2026.
     erstellt_von: null,
+    // Gleiches Problem bei Feldern aus Online-Buchung/Bestätigung (Migrationen 011/013/014): ein
+    // wiederverwendeter Datensatz mit altem bestaetigung_gesendet_am würde die Zahlungsbestätigung
+    // der NEUEN Buchung unterdrücken, ein altes ganze_loge die Loge sperren. Daher zurücksetzen.
+    ganze_loge: false,
+    bestaetigung_gesendet_am: null,
+    online_hold_bis: null,
+    idempotenz_schluessel: null,
   }
 
   let reservierungId: string

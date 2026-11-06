@@ -4,8 +4,9 @@
 // Aufruf: npx tsx scripts/test-buchen-wizard.ts
 
 import {
-  preisVorschau, maxKinderFuerLoge, pruefeKontakt, reaktionAufAntwort, monatPlus, kalenderWochen,
-  istWaehlbar, euro, datumLang, schrittFuerFeld, LEERER_KONTAKT, HINWEIS_NEUER_SCHLUESSEL,
+  preisVorschau, pruefeKontakt, reaktionAufAntwort, monatPlus, kalenderWochen,
+  istWaehlbar, euro, datumLang, schrittFuerFeld, LEERER_KONTAKT, HINWEIS_NEUER_SCHLUESSEL, SCHRITTE,
+  passtFuerKinder, ganzeLogeAngeboten, logenEtikett, etikettText, aufpreisGanzeLoge, textGanzeLogeOption,
 } from '../src/components/buchen/wizardLogik'
 import { symbolFuerLoge } from '../src/components/buchen/LogenSymbol'
 import { dsgvoAnzeige } from '../src/lib/utils/kundeAnzeige'
@@ -22,8 +23,41 @@ function pruefe(name: string, ist: unknown, soll: unknown) {
 pruefe('4 Kinder Wochentag → wie 6 Kinder', preisVorschau(4, 2, false), { gesamt: 138, anzahlung: 27.6, rest: 110.4, abrechenbareKinder: 6, zahlendeErwachsene: 0 })
 pruefe('10 Kinder + 5 Erw. Wochenende', preisVorschau(10, 5, true), { gesamt: 285, anzahlung: 57, rest: 228, abrechenbareKinder: 10, zahlendeErwachsene: 2 })
 
-pruefe('max Kinder = Restkapazität', maxKinderFuerLoge({ max_kinder: 9 }), 9)
-pruefe('max Kinder nie über 20', maxKinderFuerLoge({ max_kinder: 150 }), 20)
+// Schritte: Kinder vor der Loge (Modul „Ganze Loge“)
+pruefe('Reihenfolge der Schritte', [...SCHRITTE], ['Datum', 'Kinder', 'Uhrzeit & Loge', 'Kontakt', 'Übersicht'])
+pruefe('400 kinder_anzahl → Schritt 2', schrittFuerFeld('kinder_anzahl'), 2)
+pruefe('400 loge_id → Schritt 3', schrittFuerFeld('loge_id'), 3)
+pruefe('400 ganze_loge → Schritt 3', schrittFuerFeld('ganze_loge'), 3)
+
+// Logen nach Kinderzahl filtern (max_kinder vom Server: halb belegt höchstens 9)
+pruefe('7 Kinder passen in halb belegte Loge (max 9)', passtFuerKinder({ max_kinder: 9 }, 7), true)
+pruefe('12 Kinder passen nicht in halb belegte Loge', passtFuerKinder({ max_kinder: 9 }, 12), false)
+pruefe('12 Kinder passen in leere Loge (16)', passtFuerKinder({ max_kinder: 16 }, 12), true)
+
+// Etiketten
+const leere = { geteilt: false, flexibel: false }
+const halbe = { geteilt: true, flexibel: false }
+const bbq = { geteilt: false, flexibel: true }
+pruefe('12 Kinder → ganze Loge', etikettText(logenEtikett(leere, 12)), 'Ganze Loge für euch')
+pruefe('BBQ Zelt mit 5 Kindern → ganze Loge', etikettText(logenEtikett(bbq, 5)), 'Ganze Loge für euch')
+pruefe('7 Kinder, leere Loge → eigener Tisch, zweiter frei', etikettText(logenEtikett(leere, 7)), 'Eigener Tisch · zweiter Tisch kann noch gebucht werden')
+pruefe('7 Kinder, halb belegt → Nachbartisch belegt', etikettText(logenEtikett(halbe, 7)), 'Eigener Tisch · am Nachbartisch feiert schon eine Gruppe')
+pruefe('7 Kinder + ganze Loge angehakt → grün', logenEtikett(leere, 7, true), 'ganz')
+
+// Option „ganze Loge“: nur 1–9 Kinder, leere Loge, nicht BBQ
+pruefe('Option: 7 Kinder, leere Loge', ganzeLogeAngeboten(leere, 7), true)
+pruefe('Option: 9 Kinder, leere Loge', ganzeLogeAngeboten(leere, 9), true)
+pruefe('keine Option: 10 Kinder', ganzeLogeAngeboten(leere, 10), false)
+pruefe('keine Option: halb belegt', ganzeLogeAngeboten(halbe, 7), false)
+pruefe('keine Option: BBQ Zelt', ganzeLogeAngeboten(bbq, 7), false)
+
+// Preis mit ganzer Loge = 10 Kinder zum Preis des Tages (gleiche Formel wie der Server)
+pruefe('ganze Loge 7 Kinder + 1 Erw. Wochentag → 230 €', preisVorschau(7, 1, false, true).gesamt, 230)
+pruefe('ganze Loge 7 Kinder + 1 Erw. Wochenende/Feiertag → 270 €', preisVorschau(7, 1, true, true).gesamt, 270)
+pruefe('Aufpreis Wochentag (161 → 230)', aufpreisGanzeLoge(7, 1, false), 69)
+pruefe('Aufpreis Wochenende (189 → 270)', aufpreisGanzeLoge(7, 1, true), 81)
+pruefe('Aufpreis 4 Kinder Wochentag (Mindestpreis 6 → 10)', aufpreisGanzeLoge(4, 2, false), 92)
+pruefe('Checkbox-Text', textGanzeLogeOption(69), 'Ganze Loge nur für euch (+69\u00a0€)')
 
 // Kontakt
 const leer = pruefeKontakt(LEERER_KONTAKT)

@@ -17,8 +17,15 @@ export function staffNotificareEmail(): string | null {
 
 // Exakt derselbe Text wie die Zahlungsbestätigungs-SMS im Stripe-Webhook (Lena-Weg).
 // Nur GSM-7: Bindestrich statt Gedankenstrich. Test: scripts/test-stripe-lena-unveraendert.ts
-export function zahlungsbestaetigungSmsText(p: { vorname: string; datumAnzeige: string; start: string; ende: string; restbetrag: string }): string {
-  return `Hallo ${p.vorname}! Eure Anzahlung ist eingegangen - der Termin am ${p.datumAnzeige} (${p.start}-${p.ende} Uhr) ist fix! Restbetrag von ${p.restbetrag} € bitte am Tag der Feier vor Ort bezahlen. Bis bald!`
+// Mit „ganzer Loge“ (nur online) ein kurzer Zusatz, ebenfalls GSM-7 (ü ist im GSM-7-Zeichensatz).
+export const SMS_ZUSATZ_GANZE_LOGE = ' Ganze Loge für euch.'
+export function zahlungsbestaetigungSmsText(p: { vorname: string; datumAnzeige: string; start: string; ende: string; restbetrag: string; ganzeLoge?: boolean }): string {
+  return `Hallo ${p.vorname}! Eure Anzahlung ist eingegangen - der Termin am ${p.datumAnzeige} (${p.start}-${p.ende} Uhr) ist fix!${p.ganzeLoge ? SMS_ZUSATZ_GANZE_LOGE : ''} Restbetrag von ${p.restbetrag} € bitte am Tag der Feier vor Ort bezahlen. Bis bald!`
+}
+
+// Anzeige der Loge in E-Mails/Kalender: „Anna & Elsa (ganze Loge)“
+export function logeAnzeige(name: string, ganzeLoge: boolean): string {
+  return ganzeLoge ? `${name} (ganze Loge)` : name
 }
 
 export function escapeHtml(text: string): string {
@@ -101,7 +108,7 @@ export async function bestaetigeOnlineBuchung(reservierungId: string, emailAusSt
     .eq('angenommen_von', 'ONLINE')
     .eq('status', 'BESTAETIGT_BEZAHLT')
     .is('bestaetigung_gesendet_am', null)
-    .select('id, datum, zeitslot, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, notizen, kunden(vorname, nachname, telefon, email), logen(name)')
+    .select('id, datum, zeitslot, kinder_anzahl, erwachsene_anzahl, gesamtbetrag, anzahlung_betrag, notizen, ganze_loge, kunden(vorname, nachname, telefon, email), logen(name)')
   if (error) {
     console.error('[Online-Buchung] Bestätigung beanspruchen fehlgeschlagen:', error.message)
     return false
@@ -111,7 +118,8 @@ export async function bestaetigeOnlineBuchung(reservierungId: string, emailAusSt
 
   const kunde = (Array.isArray(res.kunden) ? res.kunden[0] : res.kunden) as { vorname: string; nachname: string; telefon: string | null; email: string | null } | null
   const loge = (Array.isArray(res.logen) ? res.logen[0] : res.logen) as { name: string } | null
-  const logeName = loge?.name ?? 'Loge'
+  const ganzeLoge = res.ganze_loge === true
+  const logeName = logeAnzeige(loge?.name ?? 'Loge', ganzeLoge)
   const datumAnzeige = new Date(res.datum + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
@@ -123,7 +131,7 @@ export async function bestaetigeOnlineBuchung(reservierungId: string, emailAusSt
   if (kunde?.telefon) {
     try {
       const { sendeSMS } = await import('@/lib/twilio/client')
-      await sendeSMS(kunde.telefon, zahlungsbestaetigungSmsText({ vorname: kunde.vorname, datumAnzeige, start, ende, restbetrag }))
+      await sendeSMS(kunde.telefon, zahlungsbestaetigungSmsText({ vorname: kunde.vorname, datumAnzeige, start, ende, restbetrag, ganzeLoge }))
     } catch (err) {
       console.error('[Online-Buchung] Bestätigungs-SMS fehlgeschlagen:', err)
     }
@@ -173,6 +181,7 @@ export async function bestaetigeOnlineBuchung(reservierungId: string, emailAusSt
           zeile('Uhrzeit', `Slot ${res.zeitslot}, ${start}-${ende} Uhr`),
           zeile('Loge', logeName),
           zeile('Kinder / Erwachsene', `${res.kinder_anzahl} / ${res.erwachsene_anzahl}`),
+          ...(ganzeLoge ? [zeile('Ganze Loge', `Ja – exklusiv, berechnet für mindestens 10 Kinder`)] : []),
           zeile('Kunde', `${kunde?.vorname ?? ''} ${kunde?.nachname ?? ''}`.trim()),
           zeile('Telefon', kunde?.telefon ?? '-'),
           zeile('E-Mail', kundenEmail ?? '-'),

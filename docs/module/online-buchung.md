@@ -501,6 +501,10 @@ Dacă cineva pornește comutatorul fără chei, `reservieren` răspunde 503 (nu 
   De făcut: numără câți clienți au format greșit, stabilește formatul țintă (`0…` fără spații, ca la clienții online)
   și normalizează (cu verificare de duplicate după normalizare). Rutele Lena ar trebui apoi să salveze același format.
 - Lena/staff pe funcția atomică `reserviere_online` (vezi 5.1).
+- **Lock lipsă la Lena/staff (notat 06.11.2026).** `api/lena/reservierungen`, `api/lena/reservierungen/aendern` și
+  `reservierungErstellen` (staff) verifică ocuparea prin citire și apoi inserează, fără lock. Două rezervări simultane pe
+  același slot pot trece amândouă (inclusiv peste o rezervare `ganze_loge`). Doar `reserviere_online` folosește
+  advisory lock. Comportament existent dinainte, nu se rezolvă în modulul „Ganze Loge”.
 
 ## 9. Incident: webhook-ul Stripe din producție nu ajungea (descoperit 02.11.2026)
 
@@ -533,6 +537,52 @@ ajungea înaintea webhook-ului → 2 SMS-uri (texte diferite), uneori 2 emailuri
 același secret ca `STRIPE_WEBHOOK_SECRET` din Vercel Production → (4) test event din Stripe → 200.
 **Nu** retrimite („Resend”) evenimentele vechi eșuate: blocul Lena din webhook setează BEZAHLT fără să verifice statusul, deci un
 `checkout.session.completed` vechi ar putea muta pe BEZAHLT o rezervare anulată între timp (comportament existent, task separat).
+
+## 10. Modul „Ganze Loge reservieren” (branch `feature/ganze-loge`, din 06.11.2026)
+
+**Context:** un client cu 7 copii a crezut că are toată loja (cardul arăta „Ganze Loge für euch” și „bis 16 Kinder”).
+Regula reală: de la 10 copii loja e exclusivă; cu 1–9 copii grupa are un tisch, iar al doilea tisch poate fi rezervat de
+altă grupă. BBQ Zelt (`kapazitaet_flexibel`) e mereu o singură grupă. Nou: un grup mic poate rezerva toată loja contra cost.
+
+**Regula:** `ganze_loge = true` blochează loja exclusiv, exact ca o grupă cu ≥10 copii, peste tot unde se calculează
+ocuparea (`reserviere_online`, `verfuegbarkeit.ts` LENA + ONLINE, rutele Lena `reservierungen` și `aendern`, acțiunea staff,
+calendarul staff). Se facturează minimum `GANZE_LOGE_MIN_KINDER = 10` copii la prețul zilei (`berechneGesamtbetrag` +
+`istPreisteuerterTag`); `kinder_anzahl` rămâne cel real. Cu ≥10 copii sau pe BBQ Zelt, `ganze_loge` e ignorat.
+
+**Migrația `014_ganze_loge.sql`:** coloana `reservierungen.ganze_loge boolean not null default false` și
+`reserviere_online` cu `p_ganze_loge boolean default false` (drop + create într-o singură tranzacție). Compatibilă cu
+codul vechi: apelul fără `p_ganze_loge` (13 parametri, cum trimite `main`) funcționează identic. Verificare după rulare:
+`npx tsx --env-file=.env.local scripts/test-migration-014.ts`.
+
+**Implementare (branch `feature/ganze-loge`):**
+- Regula comună: `src/lib/utils/belegung.ts` (`istExklusiveBelegung`, `pruefePersonalBelegung`); preț:
+  `preise.ts` (`GANZE_LOGE_MIN_KINDER`, `istGanzeLogeWirksam`, `abrechnungsKinder`, `berechneGeburtstagsBetrag`).
+- Widget: pașii Datum → Kinder → Uhrzeit & Loge → Kontakt → Übersicht. Lojile se filtrează după `max_kinder` din API-ul
+  `tag` (nou: `flexibel`). Regula în două căsuțe deasupra listei, eticheta de pe card după numărul de copii, checkbox
+  „Ganze Loge nur für euch (+X €)” sub cardul selectat (diferența calculată cu prețul zilei alese).
+- Server online: `ganze_loge` din cerere → `istGanzeLogeWirksam` → preț pentru min. 10 copii → `p_ganze_loge`.
+- Lena: textele neschimbate; doar condiția „exklusiv” ține cont de `ganze_loge` (anlegen, ändern, verfuegbarkeit).
+  Lena nu mută o rezervare `ganze_loge` într-un slot ocupat; la schimbarea numărului de copii păstrează prețul pentru 10.
+- Staff: checkbox „Ganze Loge (exklusiv)” în Neu și Bearbeiten (la Bearbeiten: refuzat dacă în slot e altă grupă);
+  „Ganze Loge” în calendar (card întreg, fără „zweite Gruppe”), detalii, Tagesübersicht (și varianta tipărită;
+  `TagesuebersichtPDF.tsx` e încă un stub gol).
+- Confirmare online: SMS cu „ Ganze Loge für euch.” (GSM-7), email/ICS „Loge (ganze Loge)”, email staff cu rândul
+  „Ganze Loge”. Confirmările pe drumul Lena/staff (webhook, erfolg, cron) rămân neschimbate.
+- Fix găsit pe parcurs: Lena și staff refolosesc un rând STORNIERT din același slot (`update`). Câmpurile nesetate
+  rămâneau vechi: un `bestaetigung_gesendet_am` vechi (Migrația 013) ar fi blocat confirmarea plății noii rezervări,
+  un `ganze_loge` vechi ar fi blocat loja. Acum se resetează explicit (`ganze_loge`, `bestaetigung_gesendet_am`,
+  `online_hold_bis`, `idempotenz_schluessel`). Verificat 06.11.2026: niciun rând afectat în DB.
+- Teste: `test-ganze-loge.ts` (dev server; 7 copii → 230 € zi lucrătoare, 270 € sâmbătă și Vinerea Mare; blocare
+  online/Lena/staff; ignorat la 12 copii și BBQ), `test-migration-014.ts`, `test-buchen-wizard.ts`,
+  `test-stripe-lena-unveraendert.ts`, `lena-snapshot.ts` (main vs. branch: 150 zile × GET/POST identice; cu o rezervare
+  `ganze_loge` singura diferență e slotul ei).
+
+**Ordinea de go-live:**
+1. ✅ (06.11.2026) Migrația 014 în Supabase (SQL Editor), cu codul vechi încă pe `main`; interogarea de control → o singură semnătură,
+   terminată cu `p_ganze_loge boolean DEFAULT false`.
+2. ✅ (06.11.2026) Verificare că widget-ul live merge: `scripts/test-migration-014.ts` verde (apelul vechi reușește) + o deschidere a
+   `/buchen/upsalla` până la Übersicht.
+3. Merge `feature/ganze-loge` → `main` + deploy (doar după confirmarea lui Valeriu).
 
 ## Status
 

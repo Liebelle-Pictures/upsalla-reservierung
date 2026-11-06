@@ -15,6 +15,8 @@ interface Reservierung {
   anzahlung_betrag: number
   notizen: string | null
   angenommen_von: string
+  // Ganze Loge gebucht (Migration 014) → kein zweiter Tisch
+  ganze_loge?: boolean
   logen: { name: string; ist_babywelt?: boolean } | null
   kunden: { vorname: string; nachname: string; telefon: string } | null
 }
@@ -133,6 +135,11 @@ export function TagesuebersichtTabelle({ reservierungen, istTeuerterTag }: Props
                   >
                     <td className="px-3 py-3 font-bold break-words" style={{ color: istBabywelt ? babyweltFarbe : 'var(--color-text)' }}>
                       {r.logen?.name ?? '—'}
+                      {r.ganze_loge && (
+                        <span className="mt-1 block w-fit rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ color: '#1E3A8A', background: '#DBEAFE', border: '1px solid #93C5FD' }}>
+                          Ganze Loge
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-3 font-medium break-words" style={{ color: 'var(--color-text)' }}>
                       {r.kunden ? `${r.kunden.vorname} ${r.kunden.nachname}` : '—'}

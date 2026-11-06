@@ -11,12 +11,14 @@
 //               * abgelaufene, unbezahlte Online-Holds zählen nicht als belegt
 //               * flexible Logen (BBQ Zelt): Obergrenze max_kinder statt "kein Deckel"
 //               * halb belegte Loge: zweite Gruppe höchstens 9 Kinder (≥10 lehnt die Funktion ab)
+//             In BEIDEN Modi: eine Reservierung mit ganze_loge belegt die Loge exklusiv (Migration 014).
 //             Die Online-Variante darf strenger sein als die Funktion (z.B. verfuegbarkeit_regel,
 //             Mindestrest 6), aber nie großzügiger.
 
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getVerfuegbareSlots, logeIstVerfuegbarFuerSlot, istGeschlossen, type ZeitslotInfo } from '@/lib/utils/zeitslots'
 import { istPreisteuerterTag, getPreisTypLabel, ladePreisteuerteTage } from '@/lib/utils/feiertage'
+import { EXKLUSIV_AB_KINDER } from '@/lib/utils/belegung'
 
 export type VerfuegbarkeitsModus = 'LENA' | 'ONLINE'
 
@@ -37,6 +39,8 @@ export interface BelegungZeile {
   status: string
   angenommen_von: string | null
   online_hold_bis: string | null
+  // „Ganze Loge reservieren“ (Migration 014): belegt die Loge exklusiv wie 10+ Kinder
+  ganze_loge: boolean
 }
 
 export interface BelegungMitDatum extends BelegungZeile {
@@ -57,13 +61,11 @@ export interface VerfuegbarSlot {
 
 // Kleinster Rest, ab dem eine halb belegte Loge noch angeboten wird
 const MINDEST_REST_KINDER = 6
-// Ab dieser Kinderzahl belegt eine Gruppe die Loge exklusiv
-const EXKLUSIV_AB_KINDER = 10
 // Gleicher Fallback wie bisher in der Lena-Route
 const STANDARD_KAPAZITAET = 16
 
 const LOGEN_SPALTEN = 'id, name, ist_babywelt, kapazitaet_flexibel, verfuegbarkeit_regel, max_kinder, online_buchbar'
-const BELEGUNG_SPALTEN = 'loge_id, zeitslot, kinder_anzahl, status, angenommen_von, online_hold_bis'
+const BELEGUNG_SPALTEN = 'loge_id, zeitslot, kinder_anzahl, status, angenommen_von, online_hold_bis, ganze_loge'
 
 // Wie in reserviere_online: unbezahlter Online-Hold, dessen Frist abgelaufen ist
 export function istAbgelaufenerOnlineHold(r: BelegungZeile, jetzt: Date): boolean {
@@ -86,12 +88,17 @@ export function berechneFreieSlots(
   const online = modus === 'ONLINE'
 
   // Belegungen pro Slot aggregieren
-  const belegMap = new Map<string, { anzahl: number; kinder: number; intern: boolean }>()
+  const belegMap = new Map<string, { anzahl: number; kinder: number; intern: boolean; ganz: boolean }>()
   for (const r of belegungen) {
     if (online && istAbgelaufenerOnlineHold(r, jetzt)) continue
     const key = `${r.loge_id}-${r.zeitslot}`
-    const b = belegMap.get(key) ?? { anzahl: 0, kinder: 0, intern: false }
-    belegMap.set(key, { anzahl: b.anzahl + 1, kinder: b.kinder + r.kinder_anzahl, intern: b.intern || r.status === 'INTERN_GESPERRT' })
+    const b = belegMap.get(key) ?? { anzahl: 0, kinder: 0, intern: false, ganz: false }
+    belegMap.set(key, {
+      anzahl: b.anzahl + 1,
+      kinder: b.kinder + r.kinder_anzahl,
+      intern: b.intern || r.status === 'INTERN_GESPERRT',
+      ganz: b.ganz || r.ganze_loge === true,
+    })
   }
 
   const slots = getVerfuegbareSlots(datumObj, teuerterTag)
@@ -119,8 +126,8 @@ export function berechneFreieSlots(
       // Vollständig frei
       if (!b) return [{ ...basis, teil_belegt: false, max_kinder: kapazitaet }]
 
-      // Bereits 2 Gruppen oder exklusive Gruppe (≥10 Kinder) → voll belegt
-      if (b.anzahl >= 2 || b.kinder >= EXKLUSIV_AB_KINDER) return []
+      // Bereits 2 Gruppen oder exklusive Gruppe (≥10 Kinder oder „ganze Loge“) → voll belegt
+      if (b.anzahl >= 2 || b.kinder >= EXKLUSIV_AB_KINDER || b.ganz) return []
 
       // Halbe Loge frei (erste Gruppe hat <10 Kinder, Platz für 2. Gruppe)
       const rest = kapazitaet - b.kinder
@@ -148,6 +155,8 @@ export interface VerfuegbarkeitsErgebnis {
   teuerterTag: boolean
   preisTyp: string
   verfuegbar: VerfuegbarSlot[]
+  // Aktive Logen des Standorts (z.B. kapazitaet_flexibel fürs Widget). Nicht Teil der Lena-Antwort.
+  logen: LogeZeile[]
 }
 
 // datum: 'YYYY-MM-DD' (bereits normalisiert)
@@ -161,7 +170,7 @@ export async function berechneVerfuegbarkeit(params: {
   const datumObj = new Date(datum + 'T00:00:00')
 
   if (istGeschlossen(datumObj)) {
-    return { datum, geschlossen: true, teuerterTag: false, preisTyp: '', verfuegbar: [] }
+    return { datum, geschlossen: true, teuerterTag: false, preisTyp: '', verfuegbar: [], logen: [] }
   }
 
   // Preistyp und verfügbare Slots ermitteln (inkl. Feiertage/Ferien)
@@ -181,7 +190,7 @@ export async function berechneVerfuegbarkeit(params: {
   if (error) console.error('[verfuegbarkeit] Belegung laden fehlgeschlagen:', error.message)
 
   const verfuegbar = berechneFreieSlots(datumObj, teuerterTag, logen, (belegt as BelegungZeile[] | null) ?? [], modus, jetzt)
-  return { datum, geschlossen: false, teuerterTag, preisTyp, verfuegbar }
+  return { datum, geschlossen: false, teuerterTag, preisTyp, verfuegbar, logen }
 }
 
 // ─── Monatsübersicht (nur online) ─────────────────────────────────────────────

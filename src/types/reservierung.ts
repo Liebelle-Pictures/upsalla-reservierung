@@ -32,6 +32,8 @@ export interface Reservierung {
   angenommen_von: string
   erstellt_am: string
   aktualisiert_am: string
+  // „Ganze Loge reservieren“ (Migration 014): Loge exklusiv wie bei 10+ Kindern
+  ganze_loge?: boolean
 }
 
 export interface ReservierungErstellen {

@@ -1,5 +1,6 @@
 'use client'
-// Buchungs-Widget /buchen/[standort]: 5 Schritte, danach Weiterleitung zu Stripe Checkout.
+// Buchungs-Widget /buchen/[standort]: 5 Schritte (Datum → Kinder → Uhrzeit & Loge → Kontakt →
+// Übersicht), danach Weiterleitung zu Stripe Checkout.
 // Daten nur über die öffentliche API (/api/buchen/[standort]/…), Preise rechnet verbindlich
 // der Server. Siehe docs/module/online-buchung.md, 5.6.
 //
@@ -9,14 +10,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Fortschritt } from './Fortschritt'
 import { SchrittDatum } from './SchrittDatum'
 import { SchrittLoge } from './SchrittLoge'
-import { SchrittPersonen } from './SchrittPersonen'
+import { SchrittKinder } from './SchrittKinder'
 import { SchrittKontakt } from './SchrittKontakt'
 import { SchrittUebersicht } from './SchrittUebersicht'
 import { Aktionsleiste, Hinweis, Knopf } from './ui'
 import { Turnstile, TURNSTILE_SITE_KEY } from './Turnstile'
 import { DATENSCHUTZ_URL } from '@/lib/online-buchung/konfiguration'
+import { KIND_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG } from '@/lib/utils/preise'
 import {
-  begrenze, euro, LEERER_KONTAKT, maxKinderFuerLoge, preisVorschau, pruefeKontakt, reaktionAufAntwort,
+  begrenze, euro, ganzeLogeAngeboten, LEERER_KONTAKT, MAX_KINDER, passtFuerKinder, preisVorschau, pruefeKontakt, reaktionAufAntwort,
   type Kontakt, type KontaktFehler, type MonatAntwort, type Schritt, type TagAntwort,
 } from './wizardLogik'
 
@@ -56,16 +58,18 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
   const [monatFehler, setMonatFehler] = useState<string | null>(null)
   const [datum, setDatum] = useState<string | null>(null)
 
-  // Schritt 2
+  // Schritt 2 (Kinder) und 3 (Uhrzeit & Loge; Tagesdaten laden schon ab der Datumswahl)
   const [tag, setTag] = useState<TagAntwort | null>(null)
   const [tagLaedt, setTagLaedt] = useState(false)
   const [tagFehler, setTagFehler] = useState<string | null>(null)
   const [zeitslot, setZeitslot] = useState<number | null>(null)
   const [logeId, setLogeId] = useState<string | null>(null)
-
-  // Schritt 3–5
   const [kinder, setKinder] = useState(6)
   const [erwachsene, setErwachsene] = useState(2)
+  // Haken „Ganze Loge nur für euch“ (gilt nur, solange die Option angeboten wird)
+  const [ganzeLogeGewaehlt, setGanzeLogeGewaehlt] = useState(false)
+
+  // Schritt 4–5
   const [kontakt, setKontakt] = useState<Kontakt>(LEERER_KONTAKT)
   const [kontaktFehler, setKontaktFehler] = useState<KontaktFehler>({})
   const [hinweis, setHinweis] = useState<SchrittHinweis | null>(null)
@@ -82,12 +86,15 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
 
   // ─── Abgeleitete Auswahl ───────────────────────────────────────────────────────
   const slot = tag?.slots.find(s => s.zeitslot === zeitslot) ?? null
-  const loge = slot?.logen.find(l => l.loge_id === logeId) ?? null
-  const maxKinder = loge ? maxKinderFuerLoge(loge) : 1
-  const wochenendpreis = tag?.wochenendpreis ?? false
+  // Passt die gewählte Loge nicht mehr zur (geänderten) Kinderzahl, gilt sie als nicht gewählt
+  const loge = slot?.logen.find(l => l.loge_id === logeId && passtFuerKinder(l, kinder)) ?? null
+  const ganzeLoge = !!loge && ganzeLogeGewaehlt && ganzeLogeAngeboten(loge, kinder)
+  // Preis des Tages: aus den Tagesdaten, solange die noch laden aus der Monatsübersicht
+  const monatsTag = datum ? monate[datum.slice(0, 7)]?.tage.find(t => t.datum === datum) : undefined
+  const wochenendpreis = tag?.wochenendpreis ?? monatsTag?.wochenendpreis ?? false
   const kontaktOk = Object.keys(pruefeKontakt(kontakt)).length === 0
   // Weiter als die Auswahl erlaubt geht es nicht (z. B. Vorwärts-Taste im Browser)
-  const erreichbar: Schritt = !datum ? 1 : !loge ? 2 : !kontaktOk ? 4 : 5
+  const erreichbar: Schritt = !datum ? 1 : !loge ? 3 : !kontaktOk ? 4 : 5
   const aktuell = Math.min(schritt, erreichbar) as Schritt
 
   // ─── Idempotenz-Schlüssel + Browser-Verlauf ────────────────────────────────────
@@ -183,13 +190,12 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
     setZeitslot(s)
   }
 
+  // Auswahl ohne automatisches Weiter: unter der Karte kann noch „ganze Loge“ angehakt werden
   function waehleLoge(id: string) {
-    const l = slot?.logen.find(x => x.loge_id === id)
-    if (!l) return
+    if (!slot?.logen.some(x => x.loge_id === id)) return
+    if (id !== logeId) setGanzeLogeGewaehlt(false)
     setLogeId(id)
-    setKinder(k => begrenze(k, 1, maxKinderFuerLoge(l)))
     setHinweis(null)
-    vor(3)
   }
 
   function weiterVonKontakt() {
@@ -229,6 +235,7 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
           datum,
           zeitslot: slot.zeitslot,
           loge_id: loge.loge_id,
+          ganze_loge: ganzeLoge,
           kinder_anzahl: kinder,
           erwachsene_anzahl: erwachsene,
           vorname: kontakt.vorname.trim(),
@@ -265,8 +272,8 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
         setLogeId(null)
         setMonate(alt => { const neu = { ...alt }; delete neu[datum.slice(0, 7)]; return neu })
         void ladeTag(datum)
-        setHinweis({ schritt: 2, ton: 'warnung', text: r.hinweis })
-        zurueck(2)
+        setHinweis({ schritt: 3, ton: 'warnung', text: r.hinweis })
+        zurueck(3)
         break
       case 'wiederholen':
         if (versuch < MAX_WIEDERHOLUNGEN) {
@@ -298,8 +305,9 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
   }
 
   // ─── Darstellung ───────────────────────────────────────────────────────────────
-  const anzahlung = preisVorschau(kinder, erwachsene, wochenendpreis).anzahlung
-  const sichtbarerHinweis = hinweis && hinweis.schritt === aktuell && aktuell !== 2 ? hinweis : null
+  const anzahlung = preisVorschau(kinder, erwachsene, wochenendpreis, ganzeLoge).anzahlung
+  // Schritt 3 zeigt seinen Hinweis selbst (unter dem Titel)
+  const sichtbarerHinweis = hinweis && hinweis.schritt === aktuell && aktuell !== 3 ? hinweis : null
 
   return (
     <div>
@@ -324,31 +332,36 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
         )}
 
         {aktuell === 2 && datum && (
+          <SchrittKinder
+            datum={datum}
+            kinder={kinder}
+            erwachsene={erwachsene}
+            wochenendpreis={wochenendpreis}
+            preisProKind={tag?.preis_pro_kind ?? (wochenendpreis ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG)}
+            onKinder={n => setKinder(begrenze(n, 1, MAX_KINDER))}
+            onErwachsene={setErwachsene}
+            onDatumAendern={() => zurueck(1)}
+          />
+        )}
+
+        {aktuell === 3 && datum && (
           <SchrittLoge
             datum={datum}
             tag={tag}
             laedt={tagLaedt}
             fehler={tagFehler}
-            hinweis={hinweis?.schritt === 2 ? hinweis.text : null}
+            hinweis={hinweis?.schritt === 3 ? hinweis.text : null}
             zeitslot={zeitslot}
-            logeId={logeId}
-            onSlot={waehleSlot}
-            onLoge={waehleLoge}
-            onDatumAendern={() => zurueck(1)}
-            onNeuLaden={() => void ladeTag(datum)}
-          />
-        )}
-
-        {aktuell === 3 && loge && (
-          <SchrittPersonen
-            loge={loge}
-            maxKinder={maxKinder}
+            logeId={loge ? logeId : null}
             kinder={kinder}
             erwachsene={erwachsene}
-            wochenendpreis={wochenendpreis}
-            preisProKind={tag?.preis_pro_kind}
-            onKinder={n => setKinder(begrenze(n, 1, maxKinder))}
-            onErwachsene={setErwachsene}
+            ganzeLoge={ganzeLoge}
+            onSlot={waehleSlot}
+            onLoge={waehleLoge}
+            onGanzeLoge={setGanzeLogeGewaehlt}
+            onDatumAendern={() => zurueck(1)}
+            onKinderAendern={() => zurueck(2)}
+            onNeuLaden={() => void ladeTag(datum)}
           />
         )}
 
@@ -362,6 +375,7 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
             kinder={kinder}
             erwachsene={erwachsene}
             wochenendpreis={wochenendpreis}
+            ganzeLoge={ganzeLoge}
             kontakt={kontakt}
             onAendern={zurueck}
           />
@@ -384,10 +398,10 @@ export function BuchungsWizard({ slug, ersterMonat, letzterMonat }: { slug: stri
           <Knopf art="text" className="px-2" onClick={() => zurueck((aktuell - 1) as Schritt)} disabled={sendet}>
             ‹ Zurück
           </Knopf>
-          {aktuell === 2 && (
-            <Knopf className="flex-1 sm:flex-none" disabled={!loge} onClick={() => vor(3)}>Weiter</Knopf>
+          {aktuell === 2 && <Knopf className="flex-1 sm:flex-none" onClick={() => vor(3)}>Weiter zur Loge</Knopf>}
+          {aktuell === 3 && (
+            <Knopf className="flex-1 sm:flex-none" disabled={!loge} onClick={() => vor(4)}>Weiter</Knopf>
           )}
-          {aktuell === 3 && <Knopf className="flex-1 sm:flex-none" onClick={() => vor(4)}>Weiter</Knopf>}
           {aktuell === 4 && <Knopf className="flex-1 sm:flex-none" onClick={weiterVonKontakt}>Weiter zur Übersicht</Knopf>}
           {aktuell === 5 && (
             <Knopf className="flex-1 text-[15px] leading-tight sm:flex-none sm:text-base" disabled={sendet || abgeschlossen || wartetAufPruefung} onClick={() => void absenden()}>

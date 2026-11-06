@@ -137,12 +137,19 @@ async function main() {
   const MARKER = 'Eure Anzahlung ist eingegangen - der Termin am'
   const webhook = vorlage('src/app/api/webhooks/stripe/route.ts', MARKER)
   const abgleich = vorlage('src/app/api/cron/stripe-abgleich/route.ts', MARKER)
-  const online = vorlage('src/lib/online-buchung/bestaetigung.ts', MARKER)
+  // Online-Text ohne den optionalen Zusatz für „ganze Loge“ (Modul 10) muss gleich bleiben
+  const online = vorlage('src/lib/online-buchung/bestaetigung.ts', MARKER)?.replace("${ganzeLoge ? SMS_ZUSATZ_GANZE_LOGE : ''}", '') ?? null
   pruefe(!!webhook && webhook === online, 'Online-Text = Webhook-Text (Lena)', { webhook, online })
   pruefe(!!abgleich && abgleich === online, 'Online-Text = Cron-stripe-abgleich-Text', { abgleich, online })
   const { zahlungsbestaetigungSmsText } = await import('../src/lib/online-buchung/bestaetigung')
   const beispiel = zahlungsbestaetigungSmsText({ vorname: 'Anna', datumAnzeige: 'Samstag, 14.11.2026', start: '10:30', ende: '14:30', restbetrag: '132.48' })
   pruefe(!/[–—]/.test(beispiel), 'kein Gedanken-/Halbgeviertstrich (GSM-7)')
+  pruefe(zahlungsbestaetigungSmsText({ vorname: 'Anna', datumAnzeige: 'Samstag, 14.11.2026', start: '10:30', ende: '14:30', restbetrag: '132.48', ganzeLoge: false }) === beispiel,
+    'ohne ganze Loge: Text unverändert')
+  const mitGanz = zahlungsbestaetigungSmsText({ vorname: 'Anna', datumAnzeige: 'Samstag, 14.11.2026', start: '10:30', ende: '14:30', restbetrag: '132.48', ganzeLoge: true })
+  // GSM-7-Grundzeichensatz (inkl. äöüÄÖÜß) + € (Erweiterung) — sonst UCS-2 und doppelte Kosten
+  const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà€]*$/
+  pruefe(GSM7.test(mitGanz) && mitGanz.includes(' ist fix! Ganze Loge für euch. Restbetrag'), 'mit ganzer Loge: kurzer Zusatz, nur GSM-7', mitGanz)
 
   console.log(fehlgeschlagen === 0 ? '\nAlle Prüfungen bestanden.' : `\n${fehlgeschlagen} Prüfung(en) fehlgeschlagen.`)
   process.exit(fehlgeschlagen === 0 ? 0 : 1)

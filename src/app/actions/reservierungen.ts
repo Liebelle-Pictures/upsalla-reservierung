@@ -4,13 +4,19 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { berechneGesamtbetrag, berechneAnzahlung, berechneGruppenBetrag, gruppenPreisProKind } from '@/lib/utils/preise'
+import { berechneGeburtstagsBetrag, berechneAnzahlung, berechneGruppenBetrag, gruppenPreisProKind, istGanzeLogeWirksam } from '@/lib/utils/preise'
+import { pruefePersonalBelegung } from '@/lib/utils/belegung'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 import { logeIstVerfuegbarFuerSlot, zeitslotZeitraum, istGeschlossen, istWochenende, GRUPPEN_ZEIT_ANZEIGE } from '@/lib/utils/zeitslots'
 import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
 import { WUPPERTAL_STANDORT_ID } from '@/lib/config'
 import { erstelleAnzahlungsSession } from '@/lib/stripe/client'
 import type { ReservierungTyp } from '@/types/reservierung'
+
+// Nur Geburtstage können „ganze Loge“ buchen (Gruppen/Intern haben eigene Regeln)
+function istGeburtstagsTyp(typ: ReservierungTyp): boolean {
+  return typ === 'GEBURTSTAG' || typ === 'BABYWELT_GEBURTSTAG'
+}
 
 export type ReservierungFormState = {
   fehler?: string
@@ -39,6 +45,7 @@ export async function reservierungErstellen(
   const kindGeburtstag = (formData.get('kind_geburtstag') as string | null) || null
   const dsgvo = formData.get('dsgvo') === 'on'
   const notizen = (formData.get('notizen') as string | null)?.trim() || null
+  const ganzeLogeGewuenscht = formData.get('ganze_loge') === 'on'
   // Fällt NIE auf "KI LENA" zurück — dieses Formular wird immer von eingeloggtem
   // Personal ausgefüllt, nie von Lena. Fallback ist der Account des Personals.
   const angenommenVon = (formData.get('angenommen_von') as string | null)?.trim() || user.email || 'Personal'
@@ -74,46 +81,25 @@ export async function reservierungErstellen(
     return { fehler: 'Diese Loge ist an diesem Tag/Zeitslot nicht verfügbar.' }
   }
 
+  // „Ganze Loge (exklusiv)“: nur Geburtstage mit 1–9 Kindern in fester Loge, sonst ignoriert
+  const ganzeLoge = istGeburtstagsTyp(typ) && istGanzeLogeWirksam(ganzeLogeGewuenscht, kinderAnzahl, logeInfo?.kapazitaet_flexibel === true)
+
   // Doppelbelegung/Kapazität prüfen — gilt nicht für Gruppen (Kita/Schule) oder interne Sperrungen
   const logeKapazitaetRelevant = typ !== 'GRUPPE' && typ !== 'INTERN'
 
   if (logeKapazitaetRelevant) {
     const { data: aktiveBelegungen } = await supabaseAdmin
       .from('reservierungen')
-      .select('kinder_anzahl')
+      .select('kinder_anzahl, ganze_loge')
       .eq('loge_id', logeId)
       .eq('datum', datum)
       .eq('zeitslot', zeitslot)
       .neq('status', 'STORNIERT')
 
-    const belegungen = aktiveBelegungen ?? []
-    const bereitsKinder = belegungen.reduce((s, r) => s + r.kinder_anzahl, 0)
-
-    if (logeInfo?.kapazitaet_flexibel) {
-      // z.B. BBQ Zelt: keine feste Obergrenze, aber nur eine Gruppe gleichzeitig
-      if (belegungen.length >= 1) {
-        return { fehler: 'Dieser Slot ist bereits belegt.' }
-      }
-    } else {
-      const maxKinder = logeInfo?.max_kinder ?? 16
-      if (belegungen.length >= 2) {
-        return { fehler: 'Dieser Slot ist bereits mit zwei Gruppen belegt.' }
-      }
-      if (belegungen.length === 1) {
-        if (belegungen[0].kinder_anzahl >= 10) {
-          return { fehler: 'Diese Loge ist für diesen Slot exklusiv belegt (10+ Kinder).' }
-        }
-        if (kinderAnzahl >= 10) {
-          return { fehler: `In dieser Loge gibt es bereits eine Gruppe mit ${belegungen[0].kinder_anzahl} Kindern. Exklusive Buchung nicht möglich.` }
-        }
-        if (bereitsKinder + kinderAnzahl > maxKinder) {
-          return { fehler: `In dieser Loge sind bereits ${bereitsKinder} Kinder gebucht. Maximal ${maxKinder - bereitsKinder} weitere möglich.` }
-        }
-      }
-      if (belegungen.length === 0 && kinderAnzahl > maxKinder) {
-        return { fehler: `Diese Loge fasst maximal ${maxKinder} Kinder.` }
-      }
-    }
+    const fehler = pruefePersonalBelegung(aktiveBelegungen ?? [], {
+      kinderAnzahl, ganzeLoge, flexibel: logeInfo?.kapazitaet_flexibel === true, maxKinder: logeInfo?.max_kinder ?? 16,
+    })
+    if (fehler) return { fehler }
   }
 
   // Preisberechnung (inkl. NRW Feiertage und Schulferien) — Gruppen haben eigene
@@ -121,7 +107,7 @@ export async function reservierungErstellen(
   const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
   const gesamtbetrag = typ === 'GRUPPE'
     ? berechneGruppenBetrag(kinderAnzahl, erwachseneAnzahl)
-    : berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
+    : berechneGeburtstagsBetrag(kinderAnzahl, weekend, erwachseneAnzahl, ganzeLoge)
   const anzahlungBetrag = typ === 'GRUPPE' ? 0 : berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = typ === 'GRUPPE' ? gruppenPreisProKind(kinderAnzahl) : (weekend ? 27.0 : 23.0)
 
@@ -183,6 +169,12 @@ export async function reservierungErstellen(
     stripe_payment_link: null,
     stripe_payment_intent_id: null,
     aktualisiert_am: new Date().toISOString(),
+    ganze_loge: ganzeLoge,
+    // Beim Wiederverwenden einer stornierten Reservierung (update unten) blieben fehlende Felder
+    // alt: ein alter Bestätigungsstempel würde die Zahlungsbestätigung der neuen Buchung unterdrücken.
+    bestaetigung_gesendet_am: null,
+    online_hold_bis: null,
+    idempotenz_schluessel: null,
   }
 
   // Prüfen ob stornierte Reservierung für diesen Slot existiert → wiederverwenden
@@ -370,6 +362,29 @@ export async function reservierungAktualisieren(
 
   if (kinderAnzahl < 1) return { fehler: 'Mindestens 1 Kind erforderlich.' }
   if (!telefon) return { fehler: 'Telefonnummer ist erforderlich.' }
+
+  // „Ganze Loge (exklusiv)“: nur Geburtstage mit 1–9 Kindern in fester Loge. Neu angehakt →
+  // im Slot darf keine andere Gruppe sein (Loge/Datum/Slot ändert dieses Formular nicht).
+  const { data: bisher } = await supabaseAdmin
+    .from('reservierungen')
+    .select('loge_id, datum, zeitslot, ganze_loge, logen(kapazitaet_flexibel)')
+    .eq('id', id)
+    .single()
+  if (!bisher) return { fehler: 'Reservierung nicht gefunden.' }
+  const logeRaw = bisher.logen as { kapazitaet_flexibel: boolean } | { kapazitaet_flexibel: boolean }[] | null
+  const flexibel = (Array.isArray(logeRaw) ? logeRaw[0] : logeRaw)?.kapazitaet_flexibel === true
+  const ganzeLoge = istGeburtstagsTyp(typ) && istGanzeLogeWirksam(formData.get('ganze_loge') === 'on', kinderAnzahl, flexibel)
+  if (ganzeLoge && !bisher.ganze_loge) {
+    const { count } = await supabaseAdmin
+      .from('reservierungen')
+      .select('id', { count: 'exact', head: true })
+      .eq('loge_id', bisher.loge_id)
+      .eq('datum', bisher.datum)
+      .eq('zeitslot', bisher.zeitslot)
+      .neq('status', 'STORNIERT')
+      .neq('id', id)
+    if ((count ?? 0) > 0) return { fehler: 'Ganze Loge nicht möglich: In diesem Slot feiert schon eine andere Gruppe.' }
+  }
   if (!istGueltigeTelefonnummer(telefon)) {
     return { fehler: 'Telefonnummer ungültig — bitte nur Ziffern (ggf. mit +) eingeben.' }
   }
@@ -377,7 +392,7 @@ export async function reservierungAktualisieren(
   const weekend = await istPreisteuerterTag(new Date(datum + 'T00:00:00'))
   const gesamtbetrag = typ === 'GRUPPE'
     ? berechneGruppenBetrag(kinderAnzahl, erwachseneAnzahl)
-    : berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
+    : berechneGeburtstagsBetrag(kinderAnzahl, weekend, erwachseneAnzahl, ganzeLoge)
   const anzahlungBetrag = typ === 'GRUPPE' ? 0 : berechneAnzahlung(gesamtbetrag)
   const paketPreisProKind = typ === 'GRUPPE' ? gruppenPreisProKind(kinderAnzahl) : (weekend ? 27.0 : 23.0)
 
@@ -413,6 +428,7 @@ export async function reservierungAktualisieren(
       anzahlung_betrag: anzahlungBetrag,
       notizen,
       angenommen_von: angenommenVon,
+      ganze_loge: ganzeLoge,
       aktualisiert_am: new Date().toISOString(),
     })
     .eq('id', id)

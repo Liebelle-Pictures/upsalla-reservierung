@@ -3,7 +3,7 @@
 import { useActionState, useState } from 'react'
 import { reservierungAktualisieren, type BearbeitenState } from '@/app/actions/reservierungen'
 import {
-  berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene,
+  berechneGeburtstagsBetrag, berechneAnzahlung, berechneZahlendErwachsene, abrechnungsKinder, istGanzeLogeWirksam, GANZE_LOGE_MIN_KINDER,
   ERWACHSENE_PREIS_WOCHENTAG, ERWACHSENE_PREIS_WOCHENENDE, KIND_PREIS_WOCHENTAG, KIND_PREIS_WOCHENENDE, MINDEST_KINDER_ABRECHNUNG,
   gruppenPreisProKind, gruppenAbrechenbareKinder, berechneGruppenFreieErwachsene, berechneGruppenZahlendErwachsene, berechneGruppenBetrag,
   GRUPPEN_MINDEST_KINDER, GRUPPEN_ERWACHSENE_PREIS,
@@ -34,7 +34,8 @@ interface Props {
     erwachsene_anzahl: number
     notizen: string | null
     angenommen_von: string
-    logen: { name: string } | null
+    ganze_loge?: boolean
+    logen: { name: string; kapazitaet_flexibel?: boolean } | null
     kunden: { id: string; vorname: string; nachname: string; telefon: string; email: string | null } | null
   }
   istTeuerterTag: boolean
@@ -54,15 +55,20 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
   const istGruppenLoge = r.logen?.name?.toLowerCase() === 'gruppen'
   const typOptionen = istGruppenLoge ? TYP_OPTIONEN_GRUPPEN : TYP_OPTIONEN
   const istGruppe = typ === 'GRUPPE'
+  // „Ganze Loge (exklusiv)“: nur Geburtstage mit 1–9 Kindern in fester Loge (Server prüft erneut,
+  // u.a. ob im Slot schon eine andere Gruppe ist)
+  const [ganzeLogeGewuenscht, setGanzeLogeGewuenscht] = useState(r.ganze_loge === true)
+  const ganzeLogeMoeglich = (typ === 'GEBURTSTAG' || typ === 'BABYWELT_GEBURTSTAG') && istGanzeLogeWirksam(true, kinderAnzahl, r.logen?.kapazitaet_flexibel === true)
+  const ganzeLoge = ganzeLogeMoeglich && ganzeLogeGewuenscht
 
   const weekend                  = istTeuerterTag
   const kindPreisProPerson       = istGruppe ? gruppenPreisProKind(kinderAnzahl) : (weekend ? KIND_PREIS_WOCHENENDE : KIND_PREIS_WOCHENTAG)
   const erwachsenePreisProPerson = istGruppe ? GRUPPEN_ERWACHSENE_PREIS : (weekend ? ERWACHSENE_PREIS_WOCHENENDE : ERWACHSENE_PREIS_WOCHENTAG)
-  const gesamtbetrag             = istGruppe ? berechneGruppenBetrag(kinderAnzahl, erwachseneAnzahl) : berechneGesamtbetrag(kinderAnzahl, weekend, erwachseneAnzahl)
+  const gesamtbetrag             = istGruppe ? berechneGruppenBetrag(kinderAnzahl, erwachseneAnzahl) : berechneGeburtstagsBetrag(kinderAnzahl, weekend, erwachseneAnzahl, ganzeLoge)
   const anzahlung                = istGruppe ? 0 : berechneAnzahlung(gesamtbetrag)
   const zahlendErwachsene        = istGruppe ? berechneGruppenZahlendErwachsene(kinderAnzahl, erwachseneAnzahl) : berechneZahlendErwachsene(erwachseneAnzahl)
   const freieErwachsene          = istGruppe ? berechneGruppenFreieErwachsene(kinderAnzahl) : 3
-  const abrechenbareKinder       = istGruppe ? gruppenAbrechenbareKinder(kinderAnzahl) : Math.max(kinderAnzahl, MINDEST_KINDER_ABRECHNUNG)
+  const abrechenbareKinder       = istGruppe ? gruppenAbrechenbareKinder(kinderAnzahl) : Math.max(abrechnungsKinder(kinderAnzahl, ganzeLoge), MINDEST_KINDER_ABRECHNUNG)
 
   const datumAnzeige = new Date(r.datum + 'T00:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
@@ -171,12 +177,21 @@ export function ReservierungBearbeitenForm({ reservierung: r, istTeuerterTag }: 
         </div>
       </div>
 
+      {ganzeLogeMoeglich && (
+        <label className="flex items-start gap-3 cursor-pointer" style={{ background: '#EFF6FF', border: '1.5px solid #BFDBFE', borderRadius: '10px', padding: '12px 14px' }}>
+          <input name="ganze_loge" type="checkbox" checked={ganzeLogeGewuenscht} onChange={e => setGanzeLogeGewuenscht(e.target.checked)} className="mt-0.5 w-5 h-5 rounded" />
+          <span className="text-sm" style={{ color: '#1E3A8A' }}>
+            <strong>Ganze Loge (exklusiv)</strong> — kein zweiter Tisch für eine andere Gruppe. Berechnet werden mindestens {GANZE_LOGE_MIN_KINDER} Kinder.
+          </span>
+        </label>
+      )}
+
       {/* Preisberechnung */}
       <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border)' }} className="space-y-2 text-sm">
         <div className="flex justify-between text-gray-600">
           <span>
             {abrechenbareKinder} Kinder × {kindPreisProPerson.toFixed(2)} €
-            {kinderAnzahl < abrechenbareKinder && ` (Mindestpreis für ${abrechenbareKinder})`}
+            {kinderAnzahl < abrechenbareKinder && (ganzeLoge ? ` (ganze Loge: Preis für ${abrechenbareKinder})` : ` (Mindestpreis für ${abrechenbareKinder})`)}
           </span>
           <span>{(abrechenbareKinder * kindPreisProPerson).toFixed(2)} €</span>
         </div>

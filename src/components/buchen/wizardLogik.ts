@@ -1,7 +1,10 @@
 // Reine Logik des Buchungs-Widgets (ohne React, ohne DB) — testbar mit
 // scripts/test-buchen-wizard.ts. Preise kommen ausschließlich aus src/lib/utils/preise.ts,
 // verbindlich rechnet aber immer der Server (reservieren).
-import { berechneGesamtbetrag, berechneAnzahlung, berechneZahlendErwachsene, MINDEST_KINDER_ABRECHNUNG } from '@/lib/utils/preise'
+import {
+  berechneGeburtstagsBetrag, berechneAnzahlung, berechneZahlendErwachsene, abrechnungsKinder, istGanzeLogeWirksam,
+  MINDEST_KINDER_ABRECHNUNG, GANZE_LOGE_MIN_KINDER,
+} from '@/lib/utils/preise'
 import { GRENZEN, EMAIL_RE } from '@/lib/online-buchung/validierung'
 import { istGueltigeTelefonnummer } from '@/lib/utils/telefon'
 
@@ -29,14 +32,56 @@ export interface LogeOption {
   max_kinder: number
   // Am zweiten Tisch feiert schon eine andere Gruppe
   geteilt: boolean
+  // BBQ Zelt o.ä.: immer nur eine Gruppe → gehört euch ganz, keine Option „ganze Loge“
+  flexibel: boolean
   // Foto der Loge (Migration 012) oder null → Symbol
   bild_url: string | null
 }
 
-export const TEXT_GETEILT_KARTE = 'Geteilte Loge · eigener Tisch'
-export const TEXT_GETEILT_ERKLAERUNG = 'Geteilte Loge: Ihr habt euren eigenen Tisch, am zweiten Tisch der Loge feiert eine andere Gruppe.'
-export const TEXT_GETEILT = 'Geteilte Loge – ihr habt euren eigenen Tisch, am zweiten Tisch feiert eine andere Gruppe.'
+// ─── Logen-Regel und Etiketten (Modul „Ganze Loge“, docs/module/online-buchung.md, 10) ─────
+// 1–9 Kinder: eigener Tisch, der zweite Tisch kann von einer anderen Gruppe gebucht werden.
+// Ab 10 Kindern (und im BBQ Zelt): die ganze Loge. Kleine Gruppen können sie dazubuchen.
+
+export const TEXT_REGEL_TISCH = '1–9 Kinder: euer eigener Tisch – die Loge kann mit einer anderen Gruppe geteilt werden'
+export const TEXT_REGEL_GANZ = 'ab 10 Kindern: die ganze Loge gehört euch'
 export const TEXT_GANZ = 'Ganze Loge für euch'
+export const TEXT_TISCH_FREI = 'Eigener Tisch · zweiter Tisch kann noch gebucht werden'
+export const TEXT_TISCH_BELEGT = 'Eigener Tisch · am Nachbartisch feiert schon eine Gruppe'
+// Längere Fassung für die Übersicht
+export const TEXT_TISCH_FREI_LANG = 'Euer eigener Tisch – den zweiten Tisch der Loge kann noch eine andere Gruppe buchen.'
+export const TEXT_TISCH_BELEGT_LANG = 'Euer eigener Tisch – am zweiten Tisch der Loge feiert schon eine andere Gruppe.'
+
+export type LogenEtikett = 'ganz' | 'tisch_frei' | 'tisch_belegt'
+
+// Etikett je Kinderzahl: ≥10 Kinder, BBQ Zelt oder dazugebuchte ganze Loge → grün „ganz“
+export function logenEtikett(loge: Pick<LogeOption, 'geteilt' | 'flexibel'>, kinder: number, ganzeLoge = false): LogenEtikett {
+  if (loge.flexibel || kinder >= GANZE_LOGE_MIN_KINDER || ganzeLoge) return 'ganz'
+  return loge.geteilt ? 'tisch_belegt' : 'tisch_frei'
+}
+
+export function etikettText(e: LogenEtikett): string {
+  return e === 'ganz' ? TEXT_GANZ : e === 'tisch_frei' ? TEXT_TISCH_FREI : TEXT_TISCH_BELEGT
+}
+
+// Passt die Gruppe in diese Loge? max_kinder liefert der Server schon nach den Regeln von
+// reserviere_online (halb belegt: höchstens 9 und Restplätze).
+export function passtFuerKinder(loge: Pick<LogeOption, 'max_kinder'>, kinder: number): boolean {
+  return kinder <= loge.max_kinder
+}
+
+// Option „Ganze Loge nur für euch“: nur bei 1–9 Kindern, komplett leerer Loge, nicht BBQ Zelt
+export function ganzeLogeAngeboten(loge: Pick<LogeOption, 'geteilt' | 'flexibel'>, kinder: number): boolean {
+  return !loge.geteilt && istGanzeLogeWirksam(true, kinder, loge.flexibel)
+}
+
+// Aufpreis für „ganze Loge“ am gewählten Tag (gleiche Formel wie der Server)
+export function aufpreisGanzeLoge(kinder: number, erwachsene: number, wochenendpreis: boolean): number {
+  return preisVorschau(kinder, erwachsene, wochenendpreis, true).gesamt - preisVorschau(kinder, erwachsene, wochenendpreis, false).gesamt
+}
+
+export function textGanzeLogeOption(aufpreis: number): string {
+  return `Ganze Loge nur für euch (+${euro(aufpreis)})`
+}
 
 // Statt Newsletter-Haken im Kontaktformular
 export const TEXT_ANGEBOT_HINWEIS = 'Etwa einmal im Jahr schicken wir euch ein Angebot für den nächsten Kindergeburtstag. Ihr könnt dem jederzeit widersprechen.'
@@ -60,7 +105,7 @@ export interface TagAntwort {
 
 // ─── Schritte ───────────────────────────────────────────────────────────────────
 
-export const SCHRITTE = ['Datum', 'Uhrzeit', 'Personen', 'Kontakt', 'Übersicht'] as const
+export const SCHRITTE = ['Datum', 'Kinder', 'Uhrzeit & Loge', 'Kontakt', 'Übersicht'] as const
 export type Schritt = 1 | 2 | 3 | 4 | 5
 
 export interface Kontakt {
@@ -82,10 +127,11 @@ export const LEERER_KONTAKT: Kontakt = {
 export function schrittFuerFeld(feld: string | undefined): Schritt {
   switch (feld) {
     case 'datum': return 1
-    case 'zeitslot':
-    case 'loge_id': return 2
     case 'kinder_anzahl':
-    case 'erwachsene_anzahl': return 3
+    case 'erwachsene_anzahl': return 2
+    case 'zeitslot':
+    case 'loge_id':
+    case 'ganze_loge': return 3
     case 'vorname':
     case 'nachname':
     case 'telefon':
@@ -106,23 +152,19 @@ export interface PreisVorschau {
   zahlendeErwachsene: number
 }
 
-export function preisVorschau(kinder: number, erwachsene: number, wochenendpreis: boolean): PreisVorschau {
-  const gesamt = berechneGesamtbetrag(kinder, wochenendpreis, erwachsene)
+export function preisVorschau(kinder: number, erwachsene: number, wochenendpreis: boolean, ganzeLoge = false): PreisVorschau {
+  const gesamt = berechneGeburtstagsBetrag(kinder, wochenendpreis, erwachsene, ganzeLoge)
   const anzahlung = berechneAnzahlung(gesamt)
   return {
     gesamt,
     anzahlung,
     rest: Math.round((gesamt - anzahlung) * 100) / 100,
-    abrechenbareKinder: Math.max(kinder, MINDEST_KINDER_ABRECHNUNG),
+    abrechenbareKinder: Math.max(abrechnungsKinder(kinder, ganzeLoge), MINDEST_KINDER_ABRECHNUNG),
     zahlendeErwachsene: berechneZahlendErwachsene(erwachsene),
   }
 }
 
-// Höchstzahl Kinder für die gewählte Loge (Server liefert schon die Restkapazität)
-export function maxKinderFuerLoge(loge: Pick<LogeOption, 'max_kinder'>): number {
-  return Math.max(GRENZEN.kinder.min, Math.min(loge.max_kinder, GRENZEN.kinder.max))
-}
-
+export const MAX_KINDER = GRENZEN.kinder.max
 export const MAX_ERWACHSENE = GRENZEN.erwachsene.max
 
 export function begrenze(wert: number, min: number, max: number): number {
@@ -151,7 +193,7 @@ export type Reaktion =
   | { art: 'weiterleiten'; url: string }
   // Hold abgelaufen / Schlüssel schon benutzt → neuer Schlüssel, Daten bleiben, nochmal absenden
   | { art: 'neuer_schluessel'; hinweis: string }
-  // Slot inzwischen vergeben → zurück zu Schritt 2, Verfügbarkeit neu laden
+  // Slot inzwischen vergeben → zurück zu Schritt 3 (Uhrzeit & Loge), Verfügbarkeit neu laden
   | { art: 'zurueck_zur_auswahl'; hinweis: string }
   // Erster Request läuft noch → gleichen Request kurz danach wiederholen
   | { art: 'wiederholen'; hinweis: string }

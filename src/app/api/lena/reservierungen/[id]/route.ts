@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pruefeLenaAuth } from '@/lib/lena/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendeSMS } from '@/lib/twilio/client'
-import { berechneGesamtbetrag, berechneAnzahlung } from '@/lib/utils/preise'
+import { berechneGeburtstagsBetrag, berechneAnzahlung } from '@/lib/utils/preise'
 import { istPreisteuerterTag } from '@/lib/utils/feiertage'
 
 export const dynamic = 'force-dynamic'
@@ -33,7 +33,8 @@ export async function PATCH(
   const body = await request.json() as { kinder_anzahl?: number; notizen?: string }
   const kinderAnzahl = body.kinder_anzahl ?? reservierung.kinder_anzahl
   const weekend = await istPreisteuerterTag(new Date(reservierung.datum + 'T00:00:00'))
-  const gesamtbetrag = berechneGesamtbetrag(kinderAnzahl, weekend, 0)
+  // Bei „ganzer Loge“ bleiben mindestens 10 Kinder berechnet (sonst identisch zu bisher)
+  const gesamtbetrag = berechneGeburtstagsBetrag(kinderAnzahl, weekend, 0, reservierung.ganze_loge === true)
   const anzahlungBetrag = berechneAnzahlung(gesamtbetrag)
 
   await supabaseAdmin
