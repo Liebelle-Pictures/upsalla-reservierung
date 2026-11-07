@@ -1,12 +1,16 @@
 import type { Metadata } from 'next'
-import { Nunito } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 
-const nunito = Nunito({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+// Nunito lokal statt next/font/google, damit der Build nicht von Google abhängt (siehe
+// OeffentlicherRahmen.tsx / Fredoka, Build-Fehler 06.11.2026). Variable Font, Subset „latin“
+// (wie bisher geliefert), Gewichte 400–800. Lizenz: SIL OFL 1.1, src/fonts/Nunito-OFL.txt.
+const nunito = localFont({
+  src: '../fonts/nunito-latin-variable.woff2',
+  weight: '400 800',
   display: 'swap',
   variable: '--font-nunito',
+  fallback: ['ui-sans-serif', 'system-ui', 'sans-serif'],
 })
 
 export const metadata: Metadata = {
