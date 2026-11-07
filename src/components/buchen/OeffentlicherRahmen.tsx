@@ -1,10 +1,20 @@
 // Rahmen der öffentlichen Seiten (Online-Buchung, Zahlungsseiten): Upsalla-Logo, Inhalt,
 // Fußzeile mit Kontakt und Rechtlichem. Kein Staff-Sidebar.
 import type { ReactNode } from 'react'
-import { Fredoka } from 'next/font/google'
+import localFont from 'next/font/local'
 import { DATENSCHUTZ_URL, IMPRESSUM_URL, TELEFON_ANZEIGE, TELEFON_LINK, UPSALLA_WEBSITE_URL } from '@/lib/online-buchung/konfiguration'
 
-const fredoka = Fredoka({ subsets: ['latin'], weight: ['500', '600'], display: 'swap', variable: '--font-fredoka' })
+// Fredoka lokal statt next/font/google: der Build lädt sonst die Schrift bei Google herunter und
+// ist einmal daran gescheitert (06.11.2026, module-not-found in fredoka_*.module.css).
+// Datei = Variable Font, Subset „latin“ (dasselbe, das next/font/google lieferte; enthält äöüß und €).
+// Lizenz: SIL Open Font License 1.1, siehe src/fonts/Fredoka-OFL.txt.
+const fredoka = localFont({
+  src: '../../fonts/fredoka-latin-variable.woff2',
+  weight: '500 600',
+  display: 'swap',
+  variable: '--font-fredoka',
+  fallback: ['sans-serif'],
+})
 
 export function OeffentlicherRahmen({ children, untertitel = 'Kindergeburtstag online buchen' }: { children: ReactNode; untertitel?: string }) {
   return (
